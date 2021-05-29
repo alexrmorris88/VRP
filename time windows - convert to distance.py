@@ -34,6 +34,8 @@ time_windows_to_distance_var = time_windows_to_distance()
 
 """ then figureout the average speed to the time it would take to get there (for the time windows) """
 
+""" add in a function for distance, time, and speed in the main class, then add in class variables """
+
 """ add in the actual distance with the time windows, maybe a second manager? """
 
 
