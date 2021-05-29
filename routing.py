@@ -736,7 +736,7 @@ class RoutingOptimization:
                 if w > 10_000 and s == 'QC':
                     rate = 1665.63 + (d * 0.65) + (dc * self.drop_charge)
         return rate
-    
+
     
     def mode(self, w, d, s):
         """Mode."""
