@@ -11,7 +11,7 @@ actual_distance = [682, 870, 1211]
 time_windows =  [
         (12, 17),  # 2
         (8, 17),  # 3
-        (10, 17),  # 4
+        (14, 18),  # 4
     ]
 
 
@@ -174,7 +174,7 @@ def main():
     routing.AddDimension(
         transit_callback_index,
         30,  # allow waiting time
-        3300,  # maximum time per vehicle (Think about it as max distance per vehicle)
+        4000,  # maximum time per vehicle (Think about it as max distance per vehicle)
         False,  # Don't force start cumul to zero.
         time)
     time_dimension = routing.GetDimensionOrDie(time)
