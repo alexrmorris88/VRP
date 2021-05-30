@@ -7,10 +7,11 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5 import uic
 import datetime as dt
-import io
+import io, glob
 from routing import RoutingOptimization
 from orders import OrderOptimization
-
+import pandas as pd
+from checkable_combobox import CheckableComboBox
 
 class RoutingGuide(Ui_MainWindow):
     
@@ -35,32 +36,43 @@ class RoutingGuide(Ui_MainWindow):
         self.oo = oo
         self.oo.add_data_orders()
         self.oo.location_filters_orders()
-        
+
+        carrier_holder = []
+        all_filenames_path = r"/home/alex/Insync/alex@M1Consulting.ca/OneDrive Biz/Machine Learning/Machine Learning/Logistics/TMS/Shipment Data/*.csv"
+        all_filenames = [i for i in glob.glob(all_filenames_path)]
+        self.df_carriers = pd.concat([pd.read_csv(f) for f in all_filenames]).drop_duplicates().reset_index(drop=True)
+
+        for i in self.df_carriers['Carrier Name'].unique():
+            carrier_holder.append(i)
+        self.checkable_combobox.addItems(carrier_holder)
+
+
     # =============================================================================
     # Loads
     # =============================================================================
     def log_run_button(self):
-        self.log_run.clicked.connect(self.find_carrier)
-        self.log_run.clicked.connect(self.date_connect)
+        """
+        Reloads the data everytime the button is clicked
+        """
+        self.log_run.clicked.connect(self.find_carrier) # Removes carriers when selected
+        self.log_run.clicked.connect(self.date_connect) # Allows us to filter dates
         self.log_run.clicked.connect(self.num_of_stops_loads)
         self.log_run.clicked.connect(self.opt_run_time)
-        
-               
         self.log_run.clicked.connect(self.show_log_loads)
         self.log_run.clicked.connect(self.show_log_map)
-        
         self.log_run.clicked.connect(self.show_opt_loads)
         self.log_run.clicked.connect(self.show_opt_map)
-        
-    
+
+
     def find_carrier(self):
-        carrier = self.comboBox.currentText()
+        carrier = self.checkable_combobox.currentData()
         self.ro.carrier_filter(carrier)
 
 
     def show_log_loads(self):
         self.ro.log_routing_data()
         self.log_textBrowser.setText(self.ro.tms_loads_print())
+
 
     def show_log_map(self):
         log_map = ro.log_map()

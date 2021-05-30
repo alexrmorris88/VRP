@@ -70,7 +70,7 @@ class RoutingOptimization:
         actual_pick_date_path = self.path + "/Load Data/*.csv"
         actual_pick_date = [i for i in glob.glob(actual_pick_date_path)]
         self.actual_pick_date = pd.concat([pd.read_csv(f) for f in actual_pick_date]).drop_duplicates().reset_index(drop=True)
-        
+
         self.df = self.df.merge(self.actual_pick_date, how='left', on=['TMS ID', 'TMS ID'])
 
         distance_path = self.path + "/base rates/Distance.csv"
@@ -97,14 +97,12 @@ class RoutingOptimization:
         coordinates_path = self.path + "/Coordinates/coordinates.csv"
         self.coordinates = pd.read_csv(coordinates_path)
         self.df = self.df.merge(self.coordinates, how='left', on=['Delivery Location Postal Code', 'Delivery Location Postal Code'])
-        
+
         self.df = self.df[self.df['Pick-up Location City'] == 'ST. GEORGE']
-        
+
         self.df = self.df[(self.df['Delivery Location State/Province'] == 'ON') | (self.df['Delivery Location State/Province'] == 'QC')]
-        
-        
+
         self.adding_data = self.df
-    
 
 
     # =============================================================================
@@ -112,8 +110,8 @@ class RoutingOptimization:
     # =============================================================================
     def carrier_filter(self, carrier):
         self.df = self.adding_data
-        
-        self.df = self.df[self.df['Carrier Name'] != carrier]
+        for i in carrier:
+            self.df = self.df[self.df['Carrier Name'] != i]
 
         self.filtering_data = self.df
 
@@ -408,7 +406,7 @@ class RoutingOptimization:
                                         <br>Location: <strong> {pc}, {ps}</strong></br>""",
                                                            max_width=len(f"name= {cm}") * 20),
                                         icon=folium.Icon(color='blue', icon='fas fa-building', prefix='fa')))
-        
+        log_map = folium.Map()
         for lt, ln, cm, we, id, cl, dc, ds, cc in zip(drop_lat, drop_lon, customer, weight, tms_id, map_colors, drop_city,
                                                       drop_state, carrier):
             log_map = folium.Map(location=[lt, ln], tiles="Stamen Terrain", zoom_start=5)
@@ -425,8 +423,9 @@ class RoutingOptimization:
                                labels=color_df['tms ids'])
         log_map.add_child(fg1)
         log_map.add_child(folium.LayerControl())
-        
+
         return log_map
+
 
     # =============================================================================
     # Optimization Data  
@@ -872,9 +871,8 @@ class RoutingOptimization:
         
         opt_map_colors = list(opt_color_df_merge['colors'])
 
-
         i = folium.FeatureGroup(name='Vehicles')
-        
+
         for lt, ln, vh, cm, we, cl, lo in zip(self.opt_lat_list, self.opt_lon_list, self.vehicle_id_list, self.opt_customers_list,
                                               self.opt_weight_list, opt_map_colors, self.opt_customer_location_list):
             opt_map = folium.Map(location=[lt, ln], tiles="Stamen Terrain", zoom_start=5)
