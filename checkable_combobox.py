@@ -4,7 +4,7 @@ from PyQt5.QtCore import *
 
 
 class CheckableComboBox(QComboBox):
-
+    # code from: https://gis.stackexchange.com/questions/350148/qcombobox-multiple-selection-pyqt5
     # Subclass Delegate to increase item height
     class Delegate(QStyledItemDelegate):
         def sizeHint(self, option, index):
@@ -35,10 +35,6 @@ class CheckableComboBox(QComboBox):
 
         # Prevent popup from closing when clicking on an item
         self.view().viewport().installEventFilter(self)
-
-        self.data_list = []
-        self.res = []
-        self.texts = []
 
     def resizeEvent(self, event):
         # Recompute text to elide as needed
@@ -86,10 +82,11 @@ class CheckableComboBox(QComboBox):
         self.closeOnLineEditClick = False
 
     def updateText(self):
+        texts = []
         for i in range(self.model().rowCount()):
             if self.model().item(i).checkState() == Qt.Checked:
-                self.texts.append(self.model().item(i).text())
-        text = ", ".join(self.texts)
+                texts.append(self.model().item(i).text())
+        text = ", ".join(texts)
 
         # Compute elided text (with "...")
         metrics = QFontMetrics(self.lineEdit().font())
@@ -107,17 +104,18 @@ class CheckableComboBox(QComboBox):
         item.setData(Qt.Unchecked, Qt.CheckStateRole)
         self.model().appendRow(item)
 
-    def addItems(self, texts, data_list=None):
+    def addItems(self, texts, datalist=None):
         for i, text in enumerate(texts):
             try:
-                self.data_list.append(i)
+                data = datalist[i]
             except (TypeError, IndexError):
-                self.data_list = None
-            self.addItem(text, self.data_list)
+                data = None
+            self.addItem(text, data)
 
     def currentData(self):
         # Return the list of selected items data
+        res = []
         for i in range(self.model().rowCount()):
             if self.model().item(i).checkState() == Qt.Checked:
-                self.res.append(self.model().item(i).data())
-        return self.res
+                res.append(self.model().item(i).data())
+        return res

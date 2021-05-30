@@ -50,10 +50,13 @@ class RoutingGuide(Ui_MainWindow):
         self.log_run.clicked.connect(self.num_of_stops_loads)
         self.log_run.clicked.connect(self.opt_run_time)
         self.log_run.clicked.connect(self.show_log_loads)
-        self.log_run.clicked.connect(self.carrier_dropdown)
         self.log_run.clicked.connect(self.show_log_map)
         self.log_run.clicked.connect(self.show_opt_loads)
         self.log_run.clicked.connect(self.show_opt_map)
+        self.log_run.clicked.connect(self.carrier_dropdown)
+
+
+
 
     def find_carrier(self):
         carrier = self.checkable_combobox.currentData()
@@ -104,15 +107,11 @@ class RoutingGuide(Ui_MainWindow):
         self.ro.date_filter(self.start_dateEdit.date().toPyDate(), self.end_dateEdit.date().toPyDate())
 
     def carrier_dropdown(self):
-        self.checkable_combobox.clear()
         self.ro.carrier_holder.clear()
-
+        self.checkable_combobox.clear()
         for i in ro.df_log['Carrier Name'].unique():
             self.ro.carrier_holder.append(i)
         self.checkable_combobox.addItems(self.ro.carrier_holder)
-
-
-
 
     def opt_run_time(self):
         self.ro.opt_time = self.opt_time_SpinBox.value()
