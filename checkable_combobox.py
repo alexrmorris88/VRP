@@ -36,6 +36,10 @@ class CheckableComboBox(QComboBox):
         # Prevent popup from closing when clicking on an item
         self.view().viewport().installEventFilter(self)
 
+        self.data_list = []
+        self.res = []
+        self.texts = []
+
     def resizeEvent(self, event):
         # Recompute text to elide as needed
         self.updateText()
@@ -82,11 +86,10 @@ class CheckableComboBox(QComboBox):
         self.closeOnLineEditClick = False
 
     def updateText(self):
-        texts = []
         for i in range(self.model().rowCount()):
             if self.model().item(i).checkState() == Qt.Checked:
-                texts.append(self.model().item(i).text())
-        text = ", ".join(texts)
+                self.texts.append(self.model().item(i).text())
+        text = ", ".join(self.texts)
 
         # Compute elided text (with "...")
         metrics = QFontMetrics(self.lineEdit().font())
@@ -104,18 +107,17 @@ class CheckableComboBox(QComboBox):
         item.setData(Qt.Unchecked, Qt.CheckStateRole)
         self.model().appendRow(item)
 
-    def addItems(self, texts, datalist=None):
+    def addItems(self, texts, data_list=None):
         for i, text in enumerate(texts):
             try:
-                data = datalist[i]
+                self.data_list.append(i)
             except (TypeError, IndexError):
-                data = None
-            self.addItem(text, data)
+                self.data_list = None
+            self.addItem(text, self.data_list)
 
     def currentData(self):
         # Return the list of selected items data
-        res = []
         for i in range(self.model().rowCount()):
             if self.model().item(i).checkState() == Qt.Checked:
-                res.append(self.model().item(i).data())
-        return res
+                self.res.append(self.model().item(i).data())
+        return self.res

@@ -1,3 +1,5 @@
+from click import clear
+
 from visual import *
 import sys
 from contextlib import redirect_stdout
@@ -36,16 +38,6 @@ class RoutingGuide(Ui_MainWindow):
         self.oo.add_data_orders()
         self.oo.location_filters_orders()
 
-        carrier_holder = []
-        all_filenames_path = r"/home/alex/Insync/alex@M1Consulting.ca/OneDrive Biz/Machine Learning/Machine Learning/Logistics/TMS/Shipment Data/*.csv"
-        all_filenames = [i for i in glob.glob(all_filenames_path)]
-        self.df_carriers = pd.concat([pd.read_csv(f) for f in all_filenames]).drop_duplicates().reset_index(drop=True)
-        self.df_carriers.sort_values(by=['Carrier Name'], inplace=True, ascending=True)
-
-        for i in self.df_carriers['Carrier Name'].unique():
-            carrier_holder.append(i)
-        self.checkable_combobox.addItems(carrier_holder)
-
     # =============================================================================
     # Loads
     # =============================================================================
@@ -58,6 +50,7 @@ class RoutingGuide(Ui_MainWindow):
         self.log_run.clicked.connect(self.num_of_stops_loads)
         self.log_run.clicked.connect(self.opt_run_time)
         self.log_run.clicked.connect(self.show_log_loads)
+        self.log_run.clicked.connect(self.carrier_dropdown)
         self.log_run.clicked.connect(self.show_log_map)
         self.log_run.clicked.connect(self.show_opt_loads)
         self.log_run.clicked.connect(self.show_opt_map)
@@ -110,6 +103,17 @@ class RoutingGuide(Ui_MainWindow):
     def date_connect(self):
         self.ro.date_filter(self.start_dateEdit.date().toPyDate(), self.end_dateEdit.date().toPyDate())
 
+    def carrier_dropdown(self):
+        self.checkable_combobox.clear()
+        self.ro.carrier_holder.clear()
+
+        for i in ro.df_log['Carrier Name'].unique():
+            self.ro.carrier_holder.append(i)
+        self.checkable_combobox.addItems(self.ro.carrier_holder)
+
+
+
+
     def opt_run_time(self):
         self.ro.opt_time = self.opt_time_SpinBox.value()
 
@@ -126,6 +130,7 @@ class RoutingGuide(Ui_MainWindow):
 
         self.orders_run.clicked.connect(self.show_opt_orders)
         self.orders_run.clicked.connect(self.show_opt_map_orders)
+
 
     def show_log_orders(self):
         self.oo.order_log_data()
@@ -182,6 +187,7 @@ if __name__ == '__main__':
     # Creating the app
     ro = RoutingOptimization(r'/home/alex/Insync/alex@M1Consulting.ca/OneDrive Biz/Machine Learning/Machine Learning/Logistics/TMS')
     oo = OrderOptimization(r'/home/alex/Insync/alex@M1Consulting.ca/OneDrive Biz/Machine Learning/Machine Learning/Logistics/TMS')
+    co = CheckableComboBox()
     ui = RoutingGuide(MainWindow, ro, oo)
 
     # Show the window and start the app
