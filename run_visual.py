@@ -41,6 +41,7 @@ class RoutingGuide(Ui_MainWindow):
         all_filenames_path = r"/home/alex/Insync/alex@M1Consulting.ca/OneDrive Biz/Machine Learning/Machine Learning/Logistics/TMS/Shipment Data/*.csv"
         all_filenames = [i for i in glob.glob(all_filenames_path)]
         self.df_carriers = pd.concat([pd.read_csv(f) for f in all_filenames]).drop_duplicates().reset_index(drop=True)
+        self.df_carriers.sort_values(by=['Carrier Name'], inplace=True, ascending=True)
 
         for i in self.df_carriers['Carrier Name'].unique():
             carrier_holder.append(i)
