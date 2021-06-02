@@ -101,7 +101,9 @@ def create_data_model():
         "Anjou, QC", 
         "Ottawa, ON", 
         "Toronto, ON" ]
+    data['weight'] = [0, 0, 15_000, 15_000, 18_000]
     data['num_vehicles'] = 3
+    data['vehicle_capacities'] = [45_000 for i in range(data['num_vehicles'])]
     data['start'] = [1 for i in range(data['num_vehicles'])]
     data['end'] = [0 for i in range(data['num_vehicles'])]
     return data
@@ -193,17 +195,29 @@ def main():
             data['time_windows'][start_idx][1])
        
 
-    # Instantiate route start and end times to produce feasible times.
-    for i in range(data['num_vehicles']):
-        routing.AddVariableMinimizedByFinalizer(
-            time_dimension.CumulVar(routing.Start(i)))
-        routing.AddVariableMinimizedByFinalizer(
-            time_dimension.CumulVar(routing.End(i)))
-       
-       
-       
-        
-        
+
+
+
+
+
+    # Add Capacity constraint.
+    def demand_callback(from_index):
+        """Return the demand of the node."""
+        # Convert from routing variable Index to demands NodeIndex.
+        from_node = manager.IndexToNode(from_index)
+        return data['weight'][from_node]
+
+    demand_callback_index = routing.RegisterUnaryTransitCallback(
+        demand_callback)
+    routing.AddDimensionWithVehicleCapacity(
+        demand_callback_index,
+        0,  # null capacity slack
+        data['vehicle_capacities'],  # vehicle maximum capacities
+        True,  # start cumul to zero
+        'Capacity')
+
+
+
        
        
        
