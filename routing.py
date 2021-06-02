@@ -37,6 +37,7 @@ class RoutingOptimization:
         self.total_payable_rate = ""
         self.actual_pick_date = ""
         self.distance = ""
+        self.appt_times = ""
         self.base_rate = ""
         self.coordinates = ""
         self.adding_data = ""
@@ -60,6 +61,8 @@ class RoutingOptimization:
         self.pick_lon_fol = []
 
         self.carrier_holder = []
+        self.time_window = []
+        self.drop_distance = []
 
     # =============================================================================
     # Adding Data
@@ -108,6 +111,12 @@ class RoutingOptimization:
         self.coordinates = pd.read_csv(coordinates_path)
         self.df = self.df.merge(self.coordinates, how='left',
                                 on=['Delivery Location Postal Code', 'Delivery Location Postal Code'])
+
+        appt_times_path = self.path + "/base rates/appt_times.csv"
+        self.appt_times = pd.read_csv(appt_times_path)
+        self.appt_times['time_windows'] = list(zip(self.appt_times['pick_time'], self.appt_times['drop_time']))
+        self.df = self.df.merge(self.appt_times, how='left',
+                                on=['Delivery Location Name', 'Delivery Location Name'])
 
         self.df = self.df[self.df['Pick-up Location City'] == 'ST. GEORGE']
 
@@ -442,8 +451,8 @@ class RoutingOptimization:
         self.df_opt['weight_filter'] = self.df_opt.groupby(
             ['Delivery Location Name', 'Pick-up Location City', 'Pick-up Location State/Province',
              'Pick-up Location Postal Code', 'Delivery Location City', 'Delivery Location State/Province',
-             'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate', 'lat', 'lon'])[
-            'Weight (lb)'].cumsum()
+             'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate', 'lat', 'lon',
+             'time_windows'])['Weight (lb)'].cumsum()
 
         rating = []
         for row in self.df_opt['weight_filter']:
@@ -462,7 +471,7 @@ class RoutingOptimization:
                              'Pick-up Location Postal Code', 'Delivery Location City',
                              'Delivery Location State/Province',
                              'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate', 'rating',
-                             'lat', 'lon'])['Weight (lb)'].sum()
+                             'lat', 'lon', 'time_windows'])['Weight (lb)'].sum()
         self.df_opt = self.df_opt.to_frame()
         self.df_opt = self.df_opt.reset_index()
 
@@ -471,7 +480,7 @@ class RoutingOptimization:
         self.df_opt['weight_filter'] = self.df_opt.groupby(
             ['Delivery Location Name', 'Pick-up Location City', 'Pick-up Location State/Province',
              'Pick-up Location Postal Code', 'Delivery Location City', 'Delivery Location State/Province',
-             'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate', 'lat', 'lon'])[
+             'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate', 'lat', 'lon', 'time_windows'])[
             'Weight (lb)'].cumsum()
 
         rating_two = []
@@ -491,8 +500,7 @@ class RoutingOptimization:
                              'Pick-up Location Postal Code', 'Delivery Location City',
                              'Delivery Location State/Province',
                              'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate',
-                             'rating_two',
-                             'lat', 'lon'])['Weight (lb)'].sum()
+                             'rating_two', 'lat', 'lon', 'time_windows'])['Weight (lb)'].sum()
         self.df_opt = self.df_opt.to_frame()
         self.df_opt = self.df_opt.reset_index()
 
@@ -552,15 +560,52 @@ class RoutingOptimization:
         return pallet_cubic_inches
 
     # =============================================================================
-    # Number of Vehicle Stops
+    # Time windows
     # =============================================================================
-    # =============================================================================
-    #     def num_of_stops_fun(self, num):
-    #
-    #         print(num)
-    #         return int(num)
-    #
-    # =============================================================================
+
+    def time_windows_to_distance(self):
+        """
+        Converting the time windows to distance windows
+        """
+
+        for distance, time in zip(self.df_opt['drop distance'], self.df_opt['time_windows']):
+            if distance < 900:
+                time = ((time[0] - 8) * 100, (time[1] - 8) * 100)
+                self.time_window.append(time)
+            elif distance >= 900:
+                time = (((time[0] - 8) + 24) * 100, ((time[1] - 8) + 24) * 100)
+                self.time_window.append(time)
+        return self.time_window
+
+
+    def time_to_distance(self):
+        for drop in self.df_opt['drop distance']:
+            drop = round(drop)
+            self.drop_distance.append(drop)
+        return self.drop_distance
+
+    def drop_dist(self):
+        """
+        formula adds extra distance for loads outside of 24 hours.
+        """
+        for drop in self.drop_distance:
+            if drop >= 900:
+                self.drop_distance.remove(drop)
+                drop2 = drop + 1_000
+                self.drop_distance.append(drop2)
+
+        for number, bounds in zip(self.drop_distance, self.time_window):
+            if (bounds[0] <= number <= bounds[1]) == False:
+                if (bounds[0] - number) < 800:
+                    number2 = number + (bounds[0] - number)
+                    self.drop_distance.remove(number)
+                    self.drop_distance.append(number2)
+                else:
+                    number
+
+        return self.drop_distance
+
+
 
     # =============================================================================
     # Weight Conversion
@@ -678,6 +723,35 @@ class RoutingOptimization:
 
         return distance_matrix
 
+
+    # =============================================================================
+    # Time Matrix
+    # =============================================================================
+    def time_matrix(self):
+
+
+        create_distance_matrix_pick = self.df_opt['pick distance']
+        create_distance_matrix_drop = self.df_opt['drop distance']
+
+        create_distance_matrix_pick = create_distance_matrix_pick.tolist()
+        create_distance_matrix_drop = create_distance_matrix_drop.tolist()
+        create_distance_matrix_pick_depot = create_distance_matrix_pick[:1]
+        create_distance_matrix = create_distance_matrix_pick_depot + create_distance_matrix_drop
+
+        create_distance_matrix = np.array(create_distance_matrix)
+        time_matrix = np.abs(create_distance_matrix - create_distance_matrix.reshape(-1, 1))
+        drop_len = create_distance_matrix
+        dummy = [0 for i in range(len(drop_len))]
+        time_matrix = np.c_[dummy, time_matrix]
+        dummy_2 = [0 for i in range(len(drop_len) + 1)]
+        dummy_2 = np.array(dummy_2)
+        time_matrix = np.vstack((dummy_2, time_matrix))
+
+        return time_matrix
+
+
+
+
     # =============================================================================
     # Routing Guide
     # =============================================================================
@@ -693,10 +767,13 @@ class RoutingOptimization:
         opt_lat = self.opt_lat()
         opt_lon = self.opt_lon()
         truck_cubic_inches = self.truck_cubic_inches()
+        time_windows_to_distance_var = self.time_windows_to_distance()
 
         """Store the data for the problem."""
         self.data = {}
         self.data['distance_matrix'] = distance_matrix
+        self.data['time_windows'] = [(0, 0), (0, 0)]
+        self.data['time_windows'] += time_windows_to_distance_var
         self.data['location_names'] = ['dummy', ]
         self.data['location_names'] += filter_location_city
         self.data['drop_state'] = ['end', ]

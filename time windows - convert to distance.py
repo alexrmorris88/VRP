@@ -4,14 +4,14 @@ from ortools.constraint_solver import pywrapcp
 import numpy as np
 
 pick_distance = [0, 0, 0]
-drop_distance = [682, 870, 1211]
+drop_distance = [682, 1270, 2011]
 
-actual_distance = [682, 870, 1211]
+actual_distance = [682, 1870, 1211]
 
 time_windows =  [
-        (12, 17),  # 2
-        (8, 17),  # 3
-        (14, 18),  # 4
+        (10, 17),  # 2
+        (8, 18),  # 3
+        (10, 18),  # 4
     ]
 
 
@@ -176,7 +176,7 @@ def main():
     routing.AddDimension(
         transit_callback_index,
         30,  # allow waiting time
-        4000,  # maximum time per vehicle (Think about it as max distance per vehicle)
+        400000,  # maximum time per vehicle (Think about it as max distance per vehicle)
         False,  # Don't force start cumul to zero.
         time)
     time_dimension = routing.GetDimensionOrDie(time)
