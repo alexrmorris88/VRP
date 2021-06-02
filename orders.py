@@ -21,7 +21,6 @@ import sys
 pd.set_option('display.max_columns', None)
 
 
-
 class OrderOptimization:
 
     fuel = 0.65
@@ -77,6 +76,8 @@ class OrderOptimization:
         all_filenames_path = self.path + "/Orders/*.csv"
         all_filenames = [i for i in glob.glob(all_filenames_path)]
         self.df = pd.concat([pd.read_csv(f) for f in all_filenames]).drop_duplicates().reset_index(drop=True)
+
+        self.df['Weight (lb)'] = self.df['Weight (lb)'].astype(float)
         
         distance_path = self.path + "/base rates/Distance.csv"
         self.distance = pd.read_csv(distance_path)
