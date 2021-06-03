@@ -568,6 +568,21 @@ class RoutingOptimization:
         return customer_time_windows
 
     # =============================================================================
+    # Changing the time windows to AM and PM
+    # =============================================================================
+    def time_windows_to_am_pm(self, time):
+        """
+        convert time to am and pm
+        """
+        if time[0] <= 12 and time[1] <= 12:
+            time = f'{time[0]}am - {time[1]}am'
+        elif time[0] <= 12 and time[1] > 12:
+            time = f'{time[0]}am - {time[1] - 12}pm'
+        elif time[0] > 12 and time[1] > 12:
+            time = f'{time[0] - 12}pm - {time[1] - 12}pm'
+        return time
+
+    # =============================================================================
     # Time windows
     # =============================================================================
 
@@ -771,7 +786,7 @@ class RoutingOptimization:
         self.data['distance_matrix'] = distance_matrix
         self.data['time_windows'] = [(0, 0), (0, 0), ]
         self.data['time_windows'] += time_windows_to_distance_var
-        self.data['customer_time_windows'] = [(0, 0), (0, 0), ]
+        self.data['customer_time_windows'] = [(0, 0), (8, 17), ]
         self.data['customer_time_windows'] += customer_time_windows
         self.data['location_names'] = ['dummy', ]
         self.data['location_names'] += filter_location_city
@@ -869,10 +884,10 @@ class RoutingOptimization:
                 drop_charges_count = (len(drop_charges) - 2)
                 drops = (len(drop_charges) - 1)
 
-                plan_output += '&nbsp; &nbsp; <b>{}</b> {}  {:,} lbs: '.format(self.data['location_names'][node_index],
-                                                                               self.data['customer_time_windows'][
-                                                                                   node_index],
-                                                                               round(route_load_2))
+                plan_output += '&nbsp; &nbsp; <b>{}</b> ({})  {:,} lbs: '.format(
+                    self.data['location_names'][node_index],
+                    self.time_windows_to_am_pm((self.data['customer_time_windows'][node_index])),
+                    round(route_load_2))
                 plan_output += '{}'.format(opt_customers_2)
                 plan_output += '<br></br>'
 
@@ -1013,34 +1028,6 @@ class RoutingOptimization:
         # Create Routing Model.
         routing = pywrapcp.RoutingModel(manager)
 
-        # Create and register a transit callback.
-        def distance_callback(from_index, to_index):
-            """Return the distance between the two nodes."""
-            # Convert from routing variable Index to distance matrix NodeIndex.
-            from_node = manager.IndexToNode(from_index)
-            to_node = manager.IndexToNode(to_index)
-            return self.data['distance_matrix'][from_node][to_node]
-
-        transit_callback_index = routing.RegisterTransitCallback(distance_callback)
-        # Define cost of each arc.
-        routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
-
-        # Add Capacity constraint.
-        def demand_callback(from_index):
-            """Return the demand of the node."""
-            # Convert from routing variable Index to demands NodeIndex.
-            from_node = manager.IndexToNode(from_index)
-            return self.data['demands'][from_node]
-
-        demand_callback_index = routing.RegisterUnaryTransitCallback(
-            demand_callback)
-        routing.AddDimensionWithVehicleCapacity(
-            demand_callback_index,
-            0,  # null capacity slack
-            self.data['vehicle_capacities'],  # vehicle maximum capacities
-            True,  # start cumul to zero
-            'Capacity')
-
         # =============================================================================
         # Time Windows
         # =============================================================================
@@ -1086,6 +1073,34 @@ class RoutingOptimization:
                 time_dimension.CumulVar(routing.Start(i)))
             routing.AddVariableMinimizedByFinalizer(
                 time_dimension.CumulVar(routing.End(i)))
+
+        # Create and register a transit callback.
+        def distance_callback(from_index, to_index):
+            """Return the distance between the two nodes."""
+            # Convert from routing variable Index to distance matrix NodeIndex.
+            from_node = manager.IndexToNode(from_index)
+            to_node = manager.IndexToNode(to_index)
+            return self.data['distance_matrix'][from_node][to_node]
+
+        transit_callback_index = routing.RegisterTransitCallback(distance_callback)
+        # Define cost of each arc.
+        routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
+
+        # Add Capacity constraint.
+        def demand_callback(from_index):
+            """Return the demand of the node."""
+            # Convert from routing variable Index to demands NodeIndex.
+            from_node = manager.IndexToNode(from_index)
+            return self.data['demands'][from_node]
+
+        demand_callback_index = routing.RegisterUnaryTransitCallback(
+            demand_callback)
+        routing.AddDimensionWithVehicleCapacity(
+            demand_callback_index,
+            0,  # null capacity slack
+            self.data['vehicle_capacities'],  # vehicle maximum capacities
+            True,  # start cumul to zero
+            'Capacity')
 
         # Number of locations per vehicle
         def num_of_locations(from_index):
