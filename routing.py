@@ -73,7 +73,8 @@ class RoutingOptimization:
         self.df = pd.concat([pd.read_csv(f) for f in all_filenames]).drop_duplicates().reset_index(drop=True)
 
         self.df['Weight (lb)'] = self.df['Weight (lb)'].astype(float)
-        self.df['Payable Total Rate (Reporting Currency)'] = self.df['Payable Total Rate (Reporting Currency)'].astype(float)
+        self.df['Payable Total Rate (Reporting Currency)'] = self.df['Payable Total Rate (Reporting Currency)'].astype(
+            float)
 
         actual_pick_date_path = self.path + "/Load Data/*.csv"
         actual_pick_date = [i for i in glob.glob(actual_pick_date_path)]
@@ -121,7 +122,7 @@ class RoutingOptimization:
         self.df = self.df[self.df['Pick-up Location City'] == 'ST. GEORGE']
 
         self.df = self.df[(self.df['Delivery Location State/Province'] == 'ON') | (
-                    self.df['Delivery Location State/Province'] == 'QC')]
+                self.df['Delivery Location State/Province'] == 'QC')]
 
         self.adding_data = self.df
 
@@ -141,7 +142,8 @@ class RoutingOptimization:
     def date_filter(self, date_start, date_end):
         self.df = self.filtering_data
 
-        self.df["First Pick Actual Date"] = pd.to_datetime(self.df["First Pick Actual Date"], format='%m-%d-%y %H:%M', errors='ignore')
+        self.df["First Pick Actual Date"] = pd.to_datetime(self.df["First Pick Actual Date"], format='%m-%d-%y %H:%M',
+                                                           errors='ignore')
         self.df["First Pick Actual Time"] = pd.to_datetime(self.df["First Pick Actual Date"]).dt.time
         self.df["First Pick Actual Date"] = pd.to_datetime(self.df["First Pick Actual Date"]).dt.date
         self.df["Shipment Create Date"] = pd.to_datetime(self.df["Shipment Create Date"], format='%m-%d-%y %H:%M',
@@ -304,7 +306,6 @@ class RoutingOptimization:
           """
 
         css = """
-
         <style type='text/css'>
           .maplegend {
             z-index:9999;
@@ -467,11 +468,12 @@ class RoutingOptimization:
         self.df_opt = self.df_opt.drop(['weight_filter'], axis=1)
 
         self.df_opt = \
-        self.df_opt.groupby(['Delivery Location Name', 'Pick-up Location City', 'Pick-up Location State/Province',
-                             'Pick-up Location Postal Code', 'Delivery Location City',
-                             'Delivery Location State/Province',
-                             'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate', 'rating',
-                             'lat', 'lon', 'time_windows'])['Weight (lb)'].sum()
+            self.df_opt.groupby(['Delivery Location Name', 'Pick-up Location City', 'Pick-up Location State/Province',
+                                 'Pick-up Location Postal Code', 'Delivery Location City',
+                                 'Delivery Location State/Province',
+                                 'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate',
+                                 'rating',
+                                 'lat', 'lon', 'time_windows'])['Weight (lb)'].sum()
         self.df_opt = self.df_opt.to_frame()
         self.df_opt = self.df_opt.reset_index()
 
@@ -480,7 +482,8 @@ class RoutingOptimization:
         self.df_opt['weight_filter'] = self.df_opt.groupby(
             ['Delivery Location Name', 'Pick-up Location City', 'Pick-up Location State/Province',
              'Pick-up Location Postal Code', 'Delivery Location City', 'Delivery Location State/Province',
-             'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate', 'lat', 'lon', 'time_windows'])[
+             'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate', 'lat', 'lon',
+             'time_windows'])[
             'Weight (lb)'].cumsum()
 
         rating_two = []
@@ -496,11 +499,11 @@ class RoutingOptimization:
         self.df_opt = self.df_opt.drop(['weight_filter'], axis=1)
 
         self.df_opt = \
-        self.df_opt.groupby(['Delivery Location Name', 'Pick-up Location City', 'Pick-up Location State/Province',
-                             'Pick-up Location Postal Code', 'Delivery Location City',
-                             'Delivery Location State/Province',
-                             'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate',
-                             'rating_two', 'lat', 'lon', 'time_windows'])['Weight (lb)'].sum()
+            self.df_opt.groupby(['Delivery Location Name', 'Pick-up Location City', 'Pick-up Location State/Province',
+                                 'Pick-up Location Postal Code', 'Delivery Location City',
+                                 'Delivery Location State/Province',
+                                 'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate',
+                                 'rating_two', 'lat', 'lon', 'time_windows'])['Weight (lb)'].sum()
         self.df_opt = self.df_opt.to_frame()
         self.df_opt = self.df_opt.reset_index()
 
@@ -556,8 +559,13 @@ class RoutingOptimization:
 
     def pallet_cubic_inches(self):
         pallet_cubic_inches = (
-                                          self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
+                                      self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
         return pallet_cubic_inches
+
+    def customer_time_windows(self):
+        customer_time_windows = self.df_opt['time_windows']
+        customer_time_windows = self.df_opt['time_windows'].tolist()
+        return customer_time_windows
 
     # =============================================================================
     # Time windows
@@ -577,35 +585,26 @@ class RoutingOptimization:
                 self.time_window.append(time)
         return self.time_window
 
-
-    def time_to_distance(self):
-        for drop in self.df_opt['drop distance']:
-            drop = round(drop)
-            self.drop_distance.append(drop)
-        return self.drop_distance
-
     def drop_dist(self):
         """
         formula adds extra distance for loads outside of 24 hours.
         """
-        for drop in self.drop_distance:
+        for drop in self.df_opt['drop distance']:
             if drop >= 900:
-                self.drop_distance.remove(drop)
                 drop2 = drop + 1_000
                 self.drop_distance.append(drop2)
-
-        for number, bounds in zip(self.drop_distance, self.time_window):
-            if (bounds[0] <= number <= bounds[1]) == False:
-                if (bounds[0] - number) < 800:
-                    number2 = number + (bounds[0] - number)
-                    self.drop_distance.remove(number)
-                    self.drop_distance.append(number2)
-                else:
-                    number
+                for number, bounds in zip(self.drop_distance, self.time_window):
+                    if (bounds[0] <= number <= bounds[1]) == False:
+                        if (bounds[0] - number) < 1_000:
+                            number2 = number + (bounds[0] - number)
+                            self.drop_distance.remove(number)
+                            self.drop_distance.append(number2)
+                        else:
+                            drop2
+            else:
+                self.drop_distance.append(drop)
 
         return self.drop_distance
-
-
 
     # =============================================================================
     # Weight Conversion
@@ -616,7 +615,7 @@ class RoutingOptimization:
 
         '''Cubic weight in Inches for a pallet'''
         pallet_cubic_inches = (
-                                          self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
+                                      self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
         pallet_count_unrounded = [x / self.pallet_weight for x in input_demand]
         # pallet_count = [ math.ceil(x / pallet_weight) for x in input_demand]
         demand_cube = [x * pallet_cubic_inches for x in pallet_count_unrounded]
@@ -723,18 +722,16 @@ class RoutingOptimization:
 
         return distance_matrix
 
-
     # =============================================================================
     # Time Matrix
     # =============================================================================
     def time_matrix(self):
-
+        drop_dist = self.drop_dist()
 
         create_distance_matrix_pick = self.df_opt['pick distance']
-        create_distance_matrix_drop = self.df_opt['drop distance']
+        create_distance_matrix_drop = drop_dist
 
         create_distance_matrix_pick = create_distance_matrix_pick.tolist()
-        create_distance_matrix_drop = create_distance_matrix_drop.tolist()
         create_distance_matrix_pick_depot = create_distance_matrix_pick[:1]
         create_distance_matrix = create_distance_matrix_pick_depot + create_distance_matrix_drop
 
@@ -748,9 +745,6 @@ class RoutingOptimization:
         time_matrix = np.vstack((dummy_2, time_matrix))
 
         return time_matrix
-
-
-
 
     # =============================================================================
     # Routing Guide
@@ -768,12 +762,17 @@ class RoutingOptimization:
         opt_lon = self.opt_lon()
         truck_cubic_inches = self.truck_cubic_inches()
         time_windows_to_distance_var = self.time_windows_to_distance()
+        time_matrix = self.time_matrix()
+        customer_time_windows = self.customer_time_windows()
 
         """Store the data for the problem."""
         self.data = {}
+        self.data['time_matrix'] = time_matrix
         self.data['distance_matrix'] = distance_matrix
-        self.data['time_windows'] = [(0, 0), (0, 0)]
+        self.data['time_windows'] = [(0, 0), (0, 0), ]
         self.data['time_windows'] += time_windows_to_distance_var
+        self.data['customer_time_windows'] = [(0, 0), (0, 0), ]
+        self.data['customer_time_windows'] += customer_time_windows
         self.data['location_names'] = ['dummy', ]
         self.data['location_names'] += filter_location_city
         self.data['drop_state'] = ['end', ]
@@ -870,8 +869,10 @@ class RoutingOptimization:
                 drop_charges_count = (len(drop_charges) - 2)
                 drops = (len(drop_charges) - 1)
 
-                plan_output += '&nbsp; &nbsp; <b>{}</b> ({:,} lbs): '.format(self.data['location_names'][node_index],
-                                                                             round(route_load_2))
+                plan_output += '&nbsp; &nbsp; <b>{}</b> {}  {:,} lbs: '.format(self.data['location_names'][node_index],
+                                                                               self.data['customer_time_windows'][
+                                                                                   node_index],
+                                                                               round(route_load_2))
                 plan_output += '{}'.format(opt_customers_2)
                 plan_output += '<br></br>'
 
@@ -965,21 +966,21 @@ class RoutingOptimization:
                                               self.opt_weight_list, opt_map_colors, self.opt_customer_location_list):
             opt_map = folium.Map(location=[lt, ln], tiles="Stamen Terrain", zoom_start=5)
             fg3.add_child(folium.Marker(location=[lt, ln],
-                                      popup=folium.Popup(f"""<br>Name: <strong> {cm}</strong></br>
+                                        popup=folium.Popup(f"""<br>Name: <strong> {cm}</strong></br>
                                         <br>Truck #<strong> {vh} </strong></br>
                                         <br>Weight: <strong> {we:,} </strong></br>
                                         <br>Location: <strong> {lo} </strong></br>""",
-                                                         max_width=len(f"name= {cm}") * 20),
-                                      icon=folium.Icon(color=cl, icon='fas fa-truck', prefix='fa')))
+                                                           max_width=len(f"name= {cm}") * 20),
+                                        icon=folium.Icon(color=cl, icon='fas fa-truck', prefix='fa')))
 
         for lt, ln, cm, we, pc, ps in zip(self.pick_lat_fol, self.pick_lon_fol, self.pick_loc_fol, self.pick_weight_fol,
                                           self.pick_city_fol, self.pick_state_fol):
             fg3.add_child(folium.Marker(location=[lt, ln],
-                                      popup=folium.Popup(f"""<br>Name: <strong>{cm}</strong></br>
+                                        popup=folium.Popup(f"""<br>Name: <strong>{cm}</strong></br>
                                         <br>Weight: <strong> {we:,}</strong></br>
                                         <br>Location: <strong> {pc}, {ps}</strong></br>""",
-                                                         max_width=len(f"name= {cm}") * 20),
-                                      icon=folium.Icon(color='blue', icon='fas fa-building', prefix='fa')))
+                                                           max_width=len(f"name= {cm}") * 20),
+                                        icon=folium.Icon(color='blue', icon='fas fa-building', prefix='fa')))
 
         self.add_categorical_legend(opt_map, 'Vehicles',
                                     colors=opt_color_df['colors'],
@@ -1039,6 +1040,52 @@ class RoutingOptimization:
             self.data['vehicle_capacities'],  # vehicle maximum capacities
             True,  # start cumul to zero
             'Capacity')
+
+        # =============================================================================
+        # Time Windows
+        # =============================================================================
+        # Create and register a transit callback.
+        def time_callback(from_index, to_index):
+            """Returns the distance between the two nodes."""
+            # Convert from routing variable Index to distance matrix NodeIndex.
+            from_node = manager.IndexToNode(from_index)
+            to_node = manager.IndexToNode(to_index)
+            return self.data['time_matrix'][from_node][to_node]
+
+        transit_callback_index = routing.RegisterTransitCallback(time_callback)
+
+        # Define cost of each arc.
+        routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
+
+        # Add Time Windows constraint.
+        time = 'Time'
+        routing.AddDimension(
+            transit_callback_index,
+            30,  # allow waiting time
+            4000,  # maximum time per vehicle (Think about it as max distance per vehicle)
+            False,  # Don't force start cumul to zero.
+            time)
+        time_dimension = routing.GetDimensionOrDie(time)
+        # Add time window constraints for each location except start and end.
+        for location_idx, time_window in enumerate(self.data['time_windows']):
+            if location_idx != 0 and 1:
+                index = manager.NodeToIndex(location_idx)
+                time_dimension.CumulVar(index).SetRange(time_window[0], time_window[1])
+
+        # Add time window constraints for each vehicle start node.
+        start_idx = 1
+        for vehicle_id in range(self.data['num_vehicles']):
+            index = routing.Start(vehicle_id)
+            time_dimension.CumulVar(index).SetRange(
+                self.data['time_windows'][start_idx][0],
+                self.data['time_windows'][start_idx][1])
+
+        # Instantiate route start and end times to produce feasible times.
+        for i in range(self.data['num_vehicles']):
+            routing.AddVariableMinimizedByFinalizer(
+                time_dimension.CumulVar(routing.Start(i)))
+            routing.AddVariableMinimizedByFinalizer(
+                time_dimension.CumulVar(routing.End(i)))
 
         # Number of locations per vehicle
         def num_of_locations(from_index):
