@@ -125,6 +125,10 @@ class RoutingGuide(Ui_MainWindow):
         self.ro.pick_lat_fol.clear()  # Clears the list from the Routing __init__ method
         self.ro.pick_lon_fol.clear()  # Clears the list from the Routing __init__ method
 
+        self.ro.carrier_holder.clear() # Clears the list from the Routing __init__ method
+        self.ro.time_window.clear() # Clears the list from the Routing __init__ method
+        self.ro.drop_distance.clear() # Clears the list from the Routing __init__ method
+
     def num_of_stops_loads(self):
         """
         Controls the number of stop locations on each load for the Routing File
