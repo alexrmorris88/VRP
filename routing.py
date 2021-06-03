@@ -43,28 +43,31 @@ class RoutingOptimization:
         self.data = ""
         self.filtering_data = ""
 
-        self.vehicle_count_list = []
-        self.vehicle_id_list = []
+        self.vehicle_count_list = [] # counts the number of locations for each vehicle - used for the optimization folium map
+        self.vehicle_id_list = [] # counts the number of vehicles needed for each load - used for the optimization folium map
         self.opt_customers_list = []
         self.opt_customers_list_2 = []
         self.opt_customer_location_list = []
-        self.opt_weight_list = []
-        self.opt_lat_list = []
-        self.opt_lon_list = []
+        self.opt_weight_list = [] # stores the destination weight - used for the optimization folium map
+        self.opt_lat_list = [] # stores the destination latitiude - used for the optimization folium map
+        self.opt_lon_list = [] # stores the destination longitude - used for the optimization folium map
 
-        self.pick_state_fol = []
-        self.pick_city_fol = []
-        self.pick_weight_fol = []
+        self.pick_state_fol = [] # stores the pick-up state - used for the optimization folium map
+        self.pick_city_fol = [] # stores the pick-up city - used for the optimization folium map
+        self.pick_weight_fol = [] # stores the total weight for all locations - used for the optimization folium map
         self.pick_loc_fol = []
-        self.pick_lat_fol = []
-        self.pick_lon_fol = []
+        self.pick_lat_fol = [] # stores the pick latitiude - used for the optimization folium map
+        self.pick_lon_fol = [] # stores the pick longitude - used for the optimization folium map
 
-        self.carrier_holder = []
+        self.carrier_holder = [] # stores the carriers for the carrier_filter checkable drop down box in the run_visual file
 
     # =============================================================================
     # Adding Data
     # =============================================================================
     def add_data(self):
+        """
+        Add's and merges the data from TMS into a Dataframe to run the entire program
+        """
         all_filenames_path = self.path + "/Shipment Data/*.csv"
         all_filenames = [i for i in glob.glob(all_filenames_path)]
         self.df = pd.concat([pd.read_csv(f) for f in all_filenames]).drop_duplicates().reset_index(drop=True)
@@ -120,6 +123,9 @@ class RoutingOptimization:
     # Locatrion and Carrier Filters
     # =============================================================================
     def carrier_filter(self, carrier):
+        """
+        Filters (removes) the carrier's from the Dataframe
+        """
         self.df = self.adding_data
         for i in carrier:
             self.df = self.df[self.df['Carrier Name'] != i]
@@ -130,6 +136,9 @@ class RoutingOptimization:
     # Date Filter
     # =============================================================================
     def date_filter(self, date_start, date_end):
+        """
+        Filters the dates in the Dataframe
+        """
         self.df = self.filtering_data
 
         self.df["First Pick Actual Date"] = pd.to_datetime(self.df["First Pick Actual Date"], format='%m-%d-%y %H:%M', errors='ignore')
@@ -154,6 +163,9 @@ class RoutingOptimization:
     # Logistics Routing Data
     # =============================================================================
     def log_routing_data(self):
+        """
+        Create's a new Dataframe to display the Logistician's loads
+        """
         self.df_log = self.df.groupby(
             ['TMS ID', 'First Pick Actual Date', 'First Pick Actual Time', 'Delivery Location Name',
              'Pick-up Location City',
@@ -183,7 +195,9 @@ class RoutingOptimization:
         self.df_log.sort_values(by=['Delivery Location State/Province'], inplace=True, ascending=False)
 
     def tms_total_distance(self):
-        """Total distance from TMS."""
+        """
+        Displays the total distance from TMS.
+        """
         total_distance = 0
         for id in self.df_log['TMS ID'].unique():
             distances = max(self.df_log['Load Total Distance (mi)'][self.df_log['TMS ID'] == id])
@@ -191,7 +205,9 @@ class RoutingOptimization:
         return total_distance
 
     def tms_total_rate(self):
-        """Total rate from TMS."""
+        """
+        Displays the total rate from TMS.
+        """
         total_rate = 0
         for id in self.df_log['TMS ID'].unique():
             rates = max(self.df_log['Payable Total Rate (Reporting Currency)'][self.df_log['TMS ID'] == id])
@@ -199,7 +215,9 @@ class RoutingOptimization:
         return total_rate
 
     def tms_total_orders(self):
-        """Total orders from TMS."""
+        """
+        Displays the total orders from TMS.
+        """
         total_orders = 0
         for id in self.df_log['TMS ID'].unique():
             orders = max(self.df_log['Order Number'][self.df_log['TMS ID'] == id])
@@ -210,7 +228,9 @@ class RoutingOptimization:
     # TMS Loads
     # =============================================================================
     def tms_loads_print(self):
-        """TMS Load Infomation."""
+        """
+        Displays the Logistican's loads for the desired dates
+        """
 
         ID = self.df_log['TMS ID'].unique()
         pick_city = self.df_log['Pick-up Location City'].unique()
@@ -252,7 +272,9 @@ class RoutingOptimization:
     # Folium Map Legend
     # =============================================================================
     def add_categorical_legend(self, folium_map, title, colors, labels):
-        """Folium Legend."""
+        """
+        Adds a legend to the Folium maps
+        """
         if len(colors) != len(labels):
             raise ValueError("colors and labels must have the same length.")
 
@@ -295,7 +317,6 @@ class RoutingOptimization:
           """
 
         css = """
-
         <style type='text/css'>
           .maplegend {
             z-index:9999;
@@ -355,6 +376,9 @@ class RoutingOptimization:
     # Logisticians Map
     # =============================================================================
     def log_map(self):
+        """
+        Displays the Logistian's loads onto a folium map
+        """
 
         pick_state = ["NB"]
         self.pick_state_fol.extend(pick_state)
@@ -436,6 +460,9 @@ class RoutingOptimization:
     # =============================================================================
 
     def opt_data(self):
+        """
+        Creates the dataframe for the Optimization loads
+        """
         self.df_opt = self.df
         self.df_opt['rating'] = ''
 
@@ -497,6 +524,9 @@ class RoutingOptimization:
         self.df_opt = self.df_opt.reset_index()
 
     def filter_location_city(self):
+        """
+        Converts the city into a list, from the optimization dataframe
+        """
         self.opt_data()
         filter_location_city = self.df_opt['Pick-up Location City'] + (', ') + self.df_opt[
             'Pick-up Location State/Province']
@@ -508,6 +538,9 @@ class RoutingOptimization:
         return filter_location_city
 
     def filter_location_state(self):
+        """
+        Converts the state into a list, from the optimization dataframe
+        """
         self.opt_data()
         filter_location_state = self.df_opt['Pick-up Location State/Province']
         filter_location_state = filter_location_state[:1]
@@ -517,55 +550,72 @@ class RoutingOptimization:
         return filter_location_state
 
     def input_demand(self):
+        """
+        Converts the weight into a list, from the optimization dataframe
+        """
         self.opt_data()
         return self.df_opt['Weight (lb)'].tolist()
 
     def filter_customer(self):
+        """
+        Converts the distination customer into a list, from the optimization dataframe
+        """
         self.opt_data()
         filter_customer = self.df_opt['Delivery Location Name']
         filter_customer = filter_customer.tolist()
         return filter_customer
 
     def base_rate_filter(self):
+        """
+        Converts the base rate into a list, from the optimization dataframe
+        """
         self.opt_data()
         base_rate_filter = self.df_opt['base rate']
         base_rate_filter = self.df_opt['base rate'].tolist()
         return base_rate_filter
 
     def opt_lat(self):
+        """
+        Converts the latitude into a list, from the optimization dataframe
+        """
         self.opt_data()
         opt_lat = self.df_opt['lat'].tolist()
         return opt_lat
 
     def opt_lon(self):
+        """
+        Converts the longitiude into a list, from the optimization dataframe
+        """
         self.opt_data()
         opt_lon = self.df_opt['lon'].tolist()
         return opt_lon
 
     def truck_cubic_inches(self):
+        """
+        Cubic inch conversion for the truck, from the optimization dataframe
+        """
         truck_cubic_inches = (self.truck_width * self.truck_length * self.truck_height) / self.cubic_inche_conversion
         return truck_cubic_inches
 
     def pallet_cubic_inches(self):
-        pallet_cubic_inches = (
-                                          self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
+        """
+        Cubic inch conversion for the pallets, from the optimization dataframe
+        """
+        pallet_cubic_inches = (self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
         return pallet_cubic_inches
-
-    # =============================================================================
-    # Number of Vehicle Stops
-    # =============================================================================
 
 
     # =============================================================================
     # Weight Conversion
     # =============================================================================
     def cubic_weight_conversion(self):
-        '''Order Weight'''
+        """
+        Converts the order weight into cubic inches
+        """
         input_demand = self.input_demand()
 
         '''Cubic weight in Inches for a pallet'''
-        pallet_cubic_inches = (
-                                          self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
+        pallet_cubic_inches = (self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
         pallet_count_unrounded = [x / self.pallet_weight for x in input_demand]
         # pallet_count = [ math.ceil(x / pallet_weight) for x in input_demand]
         demand_cube = [x * pallet_cubic_inches for x in pallet_count_unrounded]
@@ -576,11 +626,13 @@ class RoutingOptimization:
     # Vehicle Drops
     # =============================================================================
     def create_data_model(self):
+        """
+        Stores the data for the number_of_trucks() Algorthim
+        """
         input_demand = self.input_demand()
         truck_cubic_inches = self.truck_cubic_inches()
         demand_cube = self.cubic_weight_conversion()
 
-        """Create the data for the example."""
         data = {}
         data['weights'] = demand_cube
         data['customer_demand'] = list(range(len(input_demand)))
@@ -590,6 +642,9 @@ class RoutingOptimization:
         return data
 
     def number_of_trucks(self):
+        """
+        Algorthim to determine the number of Optimized trucks needed
+        """
         data = self.create_data_model()
 
         # Create the mip solver with the SCIP backend.
@@ -651,6 +706,9 @@ class RoutingOptimization:
     # Distance Matrix
     # =============================================================================
     def distance_matrix(self):
+        """
+        Create's a distance matrix for the solver
+        """
         self.opt_data()
 
         create_distance_matrix_pick = self.df_opt['pick distance']
@@ -676,6 +734,9 @@ class RoutingOptimization:
     # Routing Guide
     # =============================================================================
     def routing_guide_model(self):
+        """
+        Stores the data for the solver
+        """
         distance_matrix = self.distance_matrix()
         demand_cube = self.cubic_weight_conversion()
         number_of_trucks = self.number_of_trucks()
@@ -717,7 +778,9 @@ class RoutingOptimization:
     # Optimized Rates
     # =============================================================================
     def opt_rates(self, w, d, s, dc):
-        """Optimized rates."""
+        """
+        Returns the TL or LTL rates for Optimized loads
+        """
         if w <= 10_000 and w > 5_000:
             rate = (d * 0.7)
         elif w <= 5_000 and w > 2_000:
@@ -735,7 +798,9 @@ class RoutingOptimization:
         return rate
 
     def mode(self, w, d, s):
-        """Mode."""
+        """
+        Returns the TL or LTL mode for Optimized loads
+        """
         if w <= 10_000:
             mode = 'LTL'
         else:
@@ -747,6 +812,9 @@ class RoutingOptimization:
     # Print Routing Guide
     # =============================================================================
     def print_routing_guide(self, data, manager, routing, solution):
+        """
+        Displays the Optimization loads for the desired dates
+        """
         pallet_cubic_inches = self.pallet_cubic_inches()
         truck_cubic_inches = self.truck_cubic_inches()
         filter_location_city = self.filter_location_city()
@@ -862,7 +930,9 @@ class RoutingOptimization:
     # Optimized Solution Map Coordinates
     # =============================================================================
     def opt_map_(self):
-
+        """
+        Displays the Optimization loads onto a folium map
+        """
         opt_color = ['red', 'lightgray', 'pink', 'darkred', 'beige', 'orange', 'darkgreen', 'purple', 'lightblue',
                      'cadetblue',
                      'black', 'darkblue', 'gray', 'green', 'darkpurple', 'lightred', 'lightgreen']
@@ -918,7 +988,9 @@ class RoutingOptimization:
     # =============================================================================
 
     def routing_guide(self):
-        """Solve the CVRP problem."""
+        """
+        Solve the CVRP problem.
+        """
 
         # Instantiate the data problem.
         self.data = self.routing_guide_model()
