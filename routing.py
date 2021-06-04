@@ -1088,19 +1088,22 @@ class RoutingOptimization:
         """
         Solve the CVRP problem.
         """
-
         # Instantiate the data problem.
         self.data = self.routing_guide_model()
-        # Create the routing index manager.
-        manager = pywrapcp.RoutingIndexManager(len(self.data['distance_matrix']), self.data['num_vehicles'],
-                                               self.data['start'],
-                                               self.data['dummy'])
-        # Create Routing Model.
-        routing = pywrapcp.RoutingModel(manager)
+
+        if len(self.df['Weight (lb)']) != 0:
+            # Create the routing index manager.
+            manager = pywrapcp.RoutingIndexManager(len(self.data['distance_matrix']), self.data['num_vehicles'],
+                                                   self.data['start'],
+                                                   self.data['dummy'])
+            # Create Routing Model.
+            routing = pywrapcp.RoutingModel(manager)
+
 
         # =============================================================================
         # Time Windows
         # =============================================================================
+
         # Create and register a transit callback.
         def time_callback(from_index, to_index):
             """Returns the distance between the two nodes."""
@@ -1194,6 +1197,7 @@ class RoutingOptimization:
 
         # Setting first solution heuristic.
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()
+
         search_parameters.local_search_metaheuristic = (routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
         # search_parameters.first_solution_strategy = (routing_enums_pb2.FirstSolutionStrategy.PATH_MOST_CONSTRAINED_ARC)
         search_parameters.solution_limit = 100_000_000
