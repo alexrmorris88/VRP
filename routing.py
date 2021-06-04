@@ -821,6 +821,57 @@ class RoutingOptimization:
 
         return time_matrix
 
+    # =============================================================================
+    # Optimized Rates
+    # =============================================================================
+    def opt_rates(self, w, d, s, dc):
+        """
+        Returns the TL or LTL rates for Optimized loads
+        w = Weight
+        d = Distance
+        s = State
+        dc = Drop Charge
+        *** LTL ON rates are currently Toronto, ON Rates in CWT ****
+        *** LTL QC rates are currently Quebec, QC Rates in CWT ****
+        """
+        if w <= 10_000 and s == 'ON':
+            if w <= 10_000 and w > 7_500:
+                rate = ((w/100) * 16.5718) + (d * .2550)
+            elif w <= 7_500 and w > 5_000:
+                rate = ((w/100) * 16.0114) + (d * .2550)
+            elif w <= 5_000 and w > 2_500:
+                rate = ((w/100) * 17.2431) + (d * .2550)
+            elif w <= 2_500 and w >= 0:
+                rate = ((w/100) * 19.696) + (d * .2550)
+
+        if w <= 10_000 and s == 'QC':
+            if w <= 10_000 and w > 7_500:
+                rate = ((w/100) * 15.297) + (d * .2550)
+            elif w <= 7_500 and w > 5_000:
+                rate = ((w/100) * 14.7798) + (d * .2550)
+            elif w <= 5_000 and w > 2_500:
+                rate = ((w/100) * 16.0114) + (d * .2550)
+            elif w <= 2_500 and w >= 0:
+                rate = ((w/100) * 18.4644) + (d * .2550)
+
+        if w > 10_000 and s == 'ON':
+            rate = 2_050 + (d * 0.65) + (dc * self.drop_charge)
+        else:
+            if w > 10_000 and s == 'QC':
+                rate = 1665.63 + (d * 0.65) + (dc * self.drop_charge)
+        return rate
+
+    def mode(self, w, d, s):
+        """
+        Returns the TL or LTL mode for Optimized loads
+        """
+        if w <= 10_000:
+            mode = 'LTL'
+        else:
+            if w > 10_000:
+                mode = 'TL'
+        return mode
+
 
     # =============================================================================
     # Routing Guide
@@ -871,39 +922,6 @@ class RoutingOptimization:
         self.data['dummy'] = [0 for i in range(self.data['num_vehicles'])]
         return self.data
 
-    # =============================================================================
-    # Optimized Rates
-    # =============================================================================
-    def opt_rates(self, w, d, s, dc):
-        """
-        Returns the TL or LTL rates for Optimized loads
-        """
-        if w <= 10_000 and w > 5_000:
-            rate = (d * 0.7)
-        elif w <= 5_000 and w > 2_000:
-            rate = (d * 0.4)
-        elif w <= 2_000 and w > 500:
-            rate = (d * 0.2)
-        elif w <= 500 and w >= 0:
-            rate = (d * 0.1)
-        else:
-            if w > 10_000 and s == 'ON':
-                rate = 2_050 + (d * 0.65) + (dc * self.drop_charge)
-            else:
-                if w > 10_000 and s == 'QC':
-                    rate = 1665.63 + (d * 0.65) + (dc * self.drop_charge)
-        return rate
-
-    def mode(self, w, d, s):
-        """
-        Returns the TL or LTL mode for Optimized loads
-        """
-        if w <= 10_000:
-            mode = 'LTL'
-        else:
-            if w > 10_000:
-                mode = 'TL'
-        return mode
 
     # =============================================================================
     # Print Routing Guide
@@ -952,8 +970,9 @@ class RoutingOptimization:
                 drop_charges_count = (len(drop_charges) - 2)
                 drops = (len(drop_charges) - 1)
 
-                plan_output += '&nbsp; &nbsp; <b>{}</b> - <i>{} ({})</i> - {:,} lbs: '.format(self.data['location_names'][node_index], opt_customers_2, self.time_windows_to_am_pm((self.data['customer_time_windows'][node_index])),
-                                                                             round(route_load_2))
+                plan_output += '&nbsp; &nbsp; <b>{}</b> - <i>{} ({})</i> - {:,} lbs: '.format(self.data['location_names'][node_index], opt_customers_2,
+                                                                                              self.time_windows_to_am_pm((self.data['customer_time_windows'][node_index])),
+                                                                                              round(route_load_2))
                 plan_output += '<br></br>'
 
                 previous_index = index
@@ -1097,7 +1116,6 @@ class RoutingOptimization:
                                                    self.data['dummy'])
             # Create Routing Model.
             routing = pywrapcp.RoutingModel(manager)
-
 
         # =============================================================================
         # Time Windows
