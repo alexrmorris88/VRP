@@ -67,6 +67,10 @@ class OrderOptimization:
         self.pick_loc_fol = []
         self.pick_lat_fol = []
         self.pick_lon_fol = []
+
+        self.time_window = [] # used to hold the time windows converted into distance
+        self.drop_distance = []
+
     
     # =============================================================================
     # Adding Data
@@ -95,7 +99,12 @@ class OrderOptimization:
         coordinates_path = self.path + "/Coordinates/coordinates.csv"
         self.coordinates = pd.read_csv(coordinates_path)
         self.df = self.df.merge(self.coordinates, how='left', on=['Delivery Location Postal Code', 'Delivery Location Postal Code'])
-        
+
+        appt_times_path = self.path + "/base rates/appt_times.csv"
+        self.appt_times = pd.read_csv(appt_times_path)
+        self.appt_times['time_windows'] = list(zip(self.appt_times['pick_time'], self.appt_times['drop_time']))
+        self.df = self.df.merge(self.appt_times, how='left',
+                                on=['Delivery Location Name', 'Delivery Location Name'])
        
         return self.df
 
@@ -375,7 +384,8 @@ class OrderOptimization:
         self.df_opt['weight_filter'] = self.df_opt.groupby(
             ['Delivery Location Name', 'Pick-up Location City', 'Pick-up Location State/Province',
              'Pick-up Location Postal Code', 'Delivery Location City', 'Delivery Location State/Province',
-             'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate', 'lat', 'lon'])['Weight (lb)'].cumsum()
+             'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate', 'lat', 'lon',
+             'time_windows'])['Weight (lb)'].cumsum()
         
         rating = []
         for row in self.df_opt['weight_filter']:
@@ -392,7 +402,7 @@ class OrderOptimization:
         self.df_opt = self.df_opt.groupby(['Delivery Location Name', 'Pick-up Location City', 'Pick-up Location State/Province',
                                  'Pick-up Location Postal Code', 'Delivery Location City', 'Delivery Location State/Province',
                                  'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate', 'rating',
-                                 'lat', 'lon'])['Weight (lb)'].sum()
+                                 'lat', 'lon', 'time_windows'])['Weight (lb)'].sum()
         self.df_opt = self.df_opt.to_frame()
         self.df_opt = self.df_opt.reset_index()
         
@@ -402,7 +412,7 @@ class OrderOptimization:
         self.df_opt['weight_filter'] = self.df_opt.groupby(
             ['Delivery Location Name', 'Pick-up Location City', 'Pick-up Location State/Province',
              'Pick-up Location Postal Code', 'Delivery Location City', 'Delivery Location State/Province',
-             'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate', 'lat', 'lon'])['Weight (lb)'].cumsum()
+             'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate', 'lat', 'lon', 'time_windows'])['Weight (lb)'].cumsum()
         
         rating_two = []
         for row in self.df_opt['weight_filter']:
@@ -419,7 +429,7 @@ class OrderOptimization:
         self.df_opt = self.df_opt.groupby(['Delivery Location Name', 'Pick-up Location City', 'Pick-up Location State/Province',
                                  'Pick-up Location Postal Code', 'Delivery Location City', 'Delivery Location State/Province',
                                  'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate', 'rating_two',
-                                 'lat', 'lon'])['Weight (lb)'].sum()
+                                 'lat', 'lon', 'time_windows'])['Weight (lb)'].sum()
         self.df_opt = self.df_opt.to_frame()
         self.df_opt = self.df_opt.reset_index()
         
@@ -485,7 +495,11 @@ class OrderOptimization:
     def pallet_cubic_inches(self):
         pallet_cubic_inches = (self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
         return pallet_cubic_inches
-    
+
+    def customer_time_windows(self):
+        customer_time_windows = self.df_opt['time_windows']
+        customer_time_windows = self.df_opt['time_windows'].tolist()
+        return customer_time_windows
     
     # =============================================================================
     # Order Number Data Frame for Optimization
@@ -504,7 +518,64 @@ class OrderOptimization:
         
         return df_order_num_data
     
-    
+
+    # =============================================================================
+    # Changing the time windows to AM and PM
+    # =============================================================================
+    def time_windows_to_am_pm(self, time):
+        """
+        convert time to am and pm
+        """
+        if time[0] <= 12 and time[1] <=12:
+            time = f'{time[0]}am - {time[1]}am'
+        elif time[0] <= 12 and time[1] > 12:
+            time = f'{time[0]}am - {time[1] - 12}pm'
+        elif time[0] > 12 and time[1] > 12:
+            time = f'{time[0] - 12}pm - {time[1] - 12}pm'
+        return time
+
+    # =============================================================================
+    # Time windows
+    # =============================================================================
+
+    def time_windows_to_distance(self):
+        """
+        Converting the time windows to distance windows
+        """
+
+        for distance, time in zip(self.df_opt['drop distance'], self.df_opt['time_windows']):
+            if distance < 900:
+                time = ((time[0] - 8) * 100, (time[1] - 8) * 100)
+                self.time_window.append(time)
+            elif distance >= 900:
+                time = (((time[0] - 8) + 24) * 100, ((time[1] - 8) + 24) * 100)
+                self.time_window.append(time)
+        return self.time_window
+
+
+
+    def drop_dist(self):
+        """
+        formula adds extra distance for loads outside of 24 hours.
+        """
+        for drop in self.df_opt['drop distance']:
+            if drop >= 900:
+                drop2 = drop + 1_000
+                self.drop_distance.append(drop2)
+                for number, bounds in zip(self.drop_distance, self.time_window):
+                    if (bounds[0] <= number <= bounds[1]) == False:
+                        if (bounds[0] - number) < 1_000:
+                            number2 = number + (bounds[0] - number)
+                            self.drop_distance.remove(number)
+                            self.drop_distance.append(number2)
+                        else:
+                            drop2
+            else:
+                self.drop_distance.append(drop)
+
+        return self.drop_distance
+
+
     
     # =============================================================================
     # Weight Conversion  
@@ -624,6 +695,32 @@ class OrderOptimization:
         
         return distance_matrix
 
+
+    # =============================================================================
+    # Time Matrix
+    # =============================================================================
+    def time_matrix(self):
+        drop_dist = self.drop_dist()
+
+        create_distance_matrix_pick = self.df_opt['pick distance']
+        create_distance_matrix_drop = drop_dist
+
+        create_distance_matrix_pick = create_distance_matrix_pick.tolist()
+        create_distance_matrix_pick_depot = create_distance_matrix_pick[:1]
+        create_distance_matrix = create_distance_matrix_pick_depot + create_distance_matrix_drop
+
+        create_distance_matrix = np.array(create_distance_matrix)
+        time_matrix = np.abs(create_distance_matrix - create_distance_matrix.reshape(-1, 1))
+        drop_len = create_distance_matrix
+        dummy = [0 for i in range(len(drop_len))]
+        time_matrix = np.c_[dummy, time_matrix]
+        dummy_2 = [0 for i in range(len(drop_len) + 1)]
+        dummy_2 = np.array(dummy_2)
+        time_matrix = np.vstack((dummy_2, time_matrix))
+
+        return time_matrix
+
+
     # =============================================================================
     # Routing Guide
     # =============================================================================
@@ -639,10 +736,18 @@ class OrderOptimization:
         opt_lat = self.opt_lat()
         opt_lon = self.opt_lon()
         truck_cubic_inches = self.truck_cubic_inches()
-        
+        time_windows_to_distance_var = self.time_windows_to_distance()
+        time_matrix = self.time_matrix()
+        customer_time_windows = self.customer_time_windows()
+
         """Store the data for the problem."""
         self.data = {}
+        self.data['time_matrix'] = time_matrix
         self.data['distance_matrix'] = distance_matrix
+        self.data['time_windows'] = [(0, 0), (0, 0), ]
+        self.data['time_windows'] += time_windows_to_distance_var
+        self.data['customer_time_windows'] = [(0, 0), (8, 17), ]
+        self.data['customer_time_windows'] += customer_time_windows
         self.data['location_names'] = ['dummy', ]
         self.data['location_names'] += filter_location_city
         self.data['drop_state'] = ['end', ]
@@ -763,7 +868,7 @@ class OrderOptimization:
                 drop_charges_count = (len(drop_charges) - 2)
                 drops = (len(drop_charges) - 1)
                 
-                plan_output += '&nbsp; &nbsp;<font size="3"><b>{}:</b> ({:,} lbs): '.format(self.data['location_names'][node_index],  round(route_load_2))
+                plan_output += '&nbsp; &nbsp;<font size="3"><b>{}</b> <i>- {} -</i> ({:,} lbs): '.format(self.data['location_names'][node_index], self.time_windows_to_am_pm(self.data['customer_time_windows'][node_index]),  round(route_load_2))
                 plan_output += ', '.join(order_num_data_link['Order Number'][order_num_data_link['lon'] == opt_lon][order_num_data_link['lat'] == opt_lat][order_num_data_link['Delivery Location Name'] == opt_customers].tolist())
                 plan_output += '<br></br></font>'
                 
@@ -882,10 +987,12 @@ class OrderOptimization:
         # Instantiate the data problem.
         self.data = self.routing_guide_model()
         # Create the routing index manager.
-        manager = pywrapcp.RoutingIndexManager(len(self.data['distance_matrix']), self.data['num_vehicles'], self.data['start'],
-                                               self.data['dummy'])
-        # Create Routing Model.
-        routing = pywrapcp.RoutingModel(manager)
+
+        if len(self.df['Weight (lb)']) != 0:
+            manager = pywrapcp.RoutingIndexManager(len(self.data['distance_matrix']), self.data['num_vehicles'], self.data['start'],
+                                                   self.data['dummy'])
+            # Create Routing Model.
+            routing = pywrapcp.RoutingModel(manager)
     
         # Create and register a transit callback.
         def distance_callback(from_index, to_index):
@@ -898,7 +1005,58 @@ class OrderOptimization:
         transit_callback_index = routing.RegisterTransitCallback(distance_callback)
         # Define cost of each arc.
         routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
-    
+
+        # =============================================================================
+        # Time Windows
+        # =============================================================================
+
+        # Create and register a transit callback.
+        def time_callback(from_index, to_index):
+            """Returns the distance between the two nodes."""
+            # Convert from routing variable Index to distance matrix NodeIndex.
+            from_node = manager.IndexToNode(from_index)
+            to_node = manager.IndexToNode(to_index)
+            return self.data['time_matrix'][from_node][to_node]
+
+        transit_callback_index = routing.RegisterTransitCallback(time_callback)
+
+        # Define cost of each arc.
+        routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
+
+        # Add Time Windows constraint.
+        time = 'Time'
+        routing.AddDimension(
+            transit_callback_index,
+            30,  # allow waiting time
+            4000,  # maximum time per vehicle (Think about it as max distance per vehicle)
+            False,  # Don't force start cumul to zero.
+            time)
+        time_dimension = routing.GetDimensionOrDie(time)
+        # Add time window constraints for each location except start and end.
+        for location_idx, time_window in enumerate(self.data['time_windows']):
+            if location_idx != 0 and 1:
+                index = manager.NodeToIndex(location_idx)
+                time_dimension.CumulVar(index).SetRange(time_window[0], time_window[1])
+
+        # Add time window constraints for each vehicle start node.
+        start_idx = 1
+        for vehicle_id in range(self.data['num_vehicles']):
+            index = routing.Start(vehicle_id)
+            time_dimension.CumulVar(index).SetRange(
+                self.data['time_windows'][start_idx][0],
+                self.data['time_windows'][start_idx][1])
+
+        # Instantiate route start and end times to produce feasible times.
+        for i in range(self.data['num_vehicles']):
+            routing.AddVariableMinimizedByFinalizer(
+                time_dimension.CumulVar(routing.Start(i)))
+            routing.AddVariableMinimizedByFinalizer(
+                time_dimension.CumulVar(routing.End(i)))
+
+
+
+
+
         # Add Capacity constraint.
         def demand_callback(from_index):
             """Return the demand of the node."""

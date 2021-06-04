@@ -212,6 +212,9 @@ class RoutingGuide(Ui_MainWindow):
         self.oo.pick_lat_fol.clear()  # Clears the list from the Orders __init__ method
         self.oo.pick_lon_fol.clear()  # Clears the list from the Orders __init__ method
 
+        self.oo.time_window.clear() # Clears the list from the Orders __init__ method
+        self.oo.drop_distance.clear() # Clears the list from the Orders __init__ method
+
     def num_of_stops_orders(self):
         """
         Controls the number of stop locations on each load for the Orders File
