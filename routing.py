@@ -12,7 +12,6 @@ from itertools import cycle
 
 pd.set_option('display.max_columns', None)
 
-
 class RoutingOptimization:
     fuel = 0.65
     drop_charge = 75
