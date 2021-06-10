@@ -12,6 +12,7 @@ from itertools import cycle
 
 pd.set_option('display.max_columns', None)
 
+
 class RoutingOptimization:
     fuel = 0.65
     drop_charge = 75
@@ -61,6 +62,19 @@ class RoutingOptimization:
         self.carrier_holder = []  # stores the carriers for the carrier_filter checkable drop down box in the run_visual file
         self.time_window = []  # used to hold the time windows converted into distance
         self.drop_distance = []
+
+        self.dropped_city_state_list = []  # City and State for the dropped locations
+        self.node_city_state_list = []  # City and State associated with each node
+        self.node_weight_list = []  # Weight associated with each node
+        self.dropped_loads_weight_list = []  # Weight for the dropped locations
+        self.node_time_windows_list = []  # time windows for the each node
+        self.dropped_time_windows_list = []  # Time Windows for the dropped locations
+        self.node_customer_list = []  # Customer names associated with each node
+        self.dropped_customer_list = []  # Customer names for the dropped locations
+        self.node_customer_distance_list = []  # distance associated with each node
+        self.dropped_customer_distance_list = []  # Distance for the dropped locations
+        self.dropped_city_list = []  # City for the dropped locations
+        self.node_city_list = []  # City associated with each node
 
     # =============================================================================
     # Adding Data
@@ -114,7 +128,7 @@ class RoutingOptimization:
         self.df = self.df.merge(self.coordinates, how='left',
                                 on=['Delivery Location Postal Code', 'Delivery Location Postal Code'])
 
-        appt_times_path = self.path + "/base rates/appt_times.csv"
+        appt_times_path = self.path + "/time windows/appt_times.csv"
         self.appt_times = pd.read_csv(appt_times_path)
         self.appt_times['time_windows'] = list(zip(self.appt_times['pick_time'], self.appt_times['drop_time']))
         self.df = self.df.merge(self.appt_times, how='left',
@@ -530,6 +544,15 @@ class RoutingOptimization:
         self.df_opt = self.df_opt.to_frame()
         self.df_opt = self.df_opt.reset_index()
 
+        self.df_opt.sort_values(by=['drop distance'], inplace=True, ascending=True)
+
+    def customer_drop_distance(self):
+        """
+        Converts the drop distance into a list, from the optimization dataframe
+        """
+        self.opt_data()
+        return self.df_opt['drop distance'].tolist()
+
     def location_city(self):
         """
         Converts the city into a list, from the optimization dataframe
@@ -655,10 +678,10 @@ class RoutingOptimization:
 
         for distance, time in zip(self.df_opt['drop distance'], self.df_opt['time_windows']):
             if distance < 900:
-                time = ((time[0] - 8) * 100, (time[1] - 8) * 100)
+                time = ((time[0] - 6) * 100, (time[1] - 6) * 100)
                 self.time_window.append(time)
             elif distance >= 900:
-                time = (((time[0] - 8) + 24) * 100, ((time[1] - 8) + 24) * 100)
+                time = (((time[0] - 6) + 24) * 100, ((time[1] - 6) + 24) * 100)
                 self.time_window.append(time)
         return self.time_window
 
@@ -672,12 +695,16 @@ class RoutingOptimization:
                 self.drop_distance.append(drop2)
                 for number, bounds in zip(self.drop_distance, self.time_window):
                     if (bounds[0] <= number <= bounds[1]) == False:
-                        if (bounds[0] - number) < 1_000:
-                            number2 = number + (bounds[0] - number)
+                        if (bounds[0] - number) < 1_000 and (bounds[0] - number) >= 0:
+                            number2 = number + (((bounds[0] - number) + (bounds[1] - number)) / 2)
+                            self.drop_distance.remove(number)
+                            self.drop_distance.append(number2)
+                        elif (bounds[0] - number) < 0:
+                            number2 = number
                             self.drop_distance.remove(number)
                             self.drop_distance.append(number2)
                         else:
-                            drop2
+                            drop
             else:
                 self.drop_distance.append(drop)
 
@@ -845,38 +872,92 @@ class RoutingOptimization:
         c = City
         dc = Drops
 
-        LTL rate = (CWT (weight/100) * $CWT) + Fuel (distance * 28%)
-        TL rate = Flat Rate + Fuel (distance * $0.5/mile) + (drops * self.drop_charge)
+        LTL rate = (CWT (weight/100) * $CWT) + Fuel (distance * 25.5%)
+        TL rate = Flat Rate + Fuel (distance * $0.65/mile) + (drops * self.drop_charge)
         """
         if w <= 10_000 and s == 'ON' and c == 'TORONTO' or 'ETOBICOKE' or 'BRAMPTON' or 'BRANTFORD' or 'MISSISSAUGA' or 'WOODBRIDGE' or 'RICHMONDHILL' or 'MILTON' or 'CONCORD' or 'SCARBOROUGH':
-            if w <= 10_000 and w > 5_000:
-                rate = ((w / 100) * 20) + (d * .28)
+            if w <= 10_000 and w > 7_500:
+                rate = ((w / 100) * 16.5718) + (d * .2550)
+            elif w <= 7_500 and w > 5_000:
+                rate = ((w / 100) * 16.0114) + (d * .2550)
             elif w <= 5_000 and w > 2_500:
-                rate = ((w / 100) * 18) + (d * .28)
-            elif w <= 2_500 and w > 1_000:
-                rate = ((w / 100) * 15) + (d * .28)
-            elif w <= 1_000 and w >= 0:
-                rate = ((w / 100) * 13) + (d * .28)
+                rate = ((w / 100) * 17.2431) + (d * .2550)
+            elif w <= 2_500 and w >= 0:
+                rate = ((w / 100) * 19.696) + (d * .2550)
+
+        if w <= 10_000 and s == 'ON' and c == 'OTTAWA':
+            if w <= 10_000 and w > 7_500:
+                rate = ((w / 100) * 15.47) + (d * .2550)
+            elif w <= 7_500 and w > 5_000:
+                rate = ((w / 100) * 15.47) + (d * .2550)
+            elif w <= 5_000 and w > 2_500:
+                rate = ((w / 100) * 18.44) + (d * .2550)
+            elif w <= 2_500 and w >= 0:
+                rate = ((w / 100) * 20.84) + (d * .2550)
+
+        if w <= 10_000 and s == 'ON' and c == 'WHITBY' or 'BELLEVILLE':
+            if w <= 10_000 and w > 7_500:
+                rate = ((w / 100) * 17.9676) + (d * .2550)
+            elif w <= 7_500 and w > 5_000:
+                rate = ((w / 100) * 17.9676) + (d * .2550)
+            elif w <= 5_000 and w > 2_500:
+                rate = ((w / 100) * 17.9676) + (d * .2550)
+            elif w <= 2_500 and w >= 2_000:
+                rate = ((w / 100) * 23.008) + (d * .2550)
+            elif w <= 2_000 and w >= 500:
+                rate = ((w / 100) * 28.6798) + (d * .2550)
+            elif w <= 500 and w >= 0:
+                rate = ((w / 100) * 35.9248) + (d * .2550)
+
+        if w <= 10_000 and s == 'ON' and c == 'CAMBRIDGE' or 'KITCHENER':
+            if w <= 10_000 and w > 5_000:
+                rate = ((w / 100) * 16.66) + (d * .2550)
+            elif w <= 5_000 and w > 2_000:
+                rate = ((w / 100) * 18.44) + (d * .2550)
+            elif w <= 2_000 and w >= 0:
+                rate = ((w / 100) * 20.84) + (d * .2550)
+
+        if w <= 10_000 and s == 'QC' and c == 'NEWRICHMOND':
+            if w <= 10_000 and w > 5_000:
+                rate = ((w / 100) * 8.45) + (d * .2550)
+            elif w <= 5_000 and w > 2_000:
+                rate = ((w / 100) * 9.68) + (d * .2550)
+            elif w <= 2_500 and w >= 1_000:
+                rate = ((w / 100) * 10.27) + (d * .2550)
+            elif w <= 1_000 and w >= 500:
+                rate = ((w / 100) * 10.83) + (d * .2550)
+            elif w <= 500 and w >= 0:
+                rate = ((w / 100) * 14.05) + (d * .2550)
+
+        if w <= 10_000 and s == 'QC' and c == 'QUÉBEC' or 'SAINT-NICOLAS':
+            if w <= 10_000 and w > 7_500:
+                rate = ((w / 100) * 15.297) + (d * .2550)
+            elif w <= 7_500 and w > 5_000:
+                rate = ((w / 100) * 14.7798) + (d * .2550)
+            elif w <= 5_000 and w > 2_500:
+                rate = ((w / 100) * 16.0114) + (d * .2550)
+            elif w <= 2_500 and w >= 0:
+                rate = ((w / 100) * 18.4644) + (d * .2550)
 
         if w <= 10_000 and s == 'QC' and c == 'MONTRÉAL' or 'BOUCHERVILLE' or 'ANJOU' or 'DORVAL' or 'LACHINE' or 'SAINT-LAURENT' or 'SAINT-LÉONARD' or 'VARENNES' or 'CHAMBLY' or 'DRUMMONDVILLE' or 'MIRABEL' or 'NICOLET' or 'SAINTE-PERPETUE':
-            if w <= 10_000 and w > 5_000:
-                rate = ((w / 100) * 18) + (d * .28)
+            if w <= 10_000 and w > 7_500:
+                rate = ((w / 100) * 15.297) + (d * .2550)
+            elif w <= 7_500 and w > 5_000:
+                rate = ((w / 100) * 14.7798) + (d * .2550)
             elif w <= 5_000 and w > 2_500:
-                rate = ((w / 100) * 15) + (d * .28)
-            elif w <= 2_500 and w > 1_000:
-                rate = ((w / 100) * 13) + (d * .28)
-            elif w <= 1_000 and w >= 0:
-                rate = ((w / 100) * 11) + (d * .28)
+                rate = ((w / 100) * 16.0114) + (d * .2550)
+            elif w <= 2_500 and w >= 0:
+                rate = ((w / 100) * 18.4644) + (d * .2550)
 
         if w > 10_000 and s == 'ON':
-            rate = 2_500 + (d * 0.5) + (dc * self.drop_charge)
+            rate = 2_050 + (d * 0.65) + (dc * self.drop_charge)
         else:
             if w > 10_000 and s == 'QC':
-                rate = 2_000 + (d * 0.5) + (dc * self.drop_charge)
+                rate = 1665.63 + (d * 0.65) + (dc * self.drop_charge)
 
         return rate
 
-    def mode(self, w, d, s):
+    def mode(self, w, d, s=None):
         """
         Returns the TL or LTL mode for Optimized loads
         """
@@ -906,11 +987,14 @@ class RoutingOptimization:
         time_matrix = self.time_matrix()
         customer_time_windows = self.customer_time_windows()
         location_city = self.location_city()
+        customer_drop_distance = self.customer_drop_distance()
 
         """Store the data for the problem."""
         self.data = {}
         self.data['time_matrix'] = time_matrix
         self.data['distance_matrix'] = distance_matrix
+        self.data['customer_distance'] = [0, 0, ]
+        self.data['customer_distance'] += customer_drop_distance
         self.data['time_windows'] = [(0, 0), (0, 0), ]
         self.data['time_windows'] += time_windows_to_distance_var
         self.data['customer_time_windows'] = [(0, 0), (8, 17), ]
@@ -966,6 +1050,14 @@ class RoutingOptimization:
             drop_charges = []
             while not routing.IsEnd(index):
                 node_index = manager.IndexToNode(index)
+
+                self.node_city_state_list.append(self.data['location_names'][node_index])
+                self.node_weight_list.append(self.data['weight'][node_index])
+                self.node_time_windows_list.append(self.data['customer_time_windows'][node_index])
+                self.node_customer_list.append(self.data['customer'][node_index])
+                self.node_customer_distance_list.append(self.data['customer_distance'][node_index])
+                self.node_city_list.append(self.data['drop_city'][node_index])
+
                 route_load += self.data['demands'][node_index]
                 route_load_2 = self.data['weight'][node_index]
                 opt_customers = self.data['customer'][node_index]
@@ -986,7 +1078,7 @@ class RoutingOptimization:
                 drop_charges_count = (len(drop_charges) - 2)
                 drops = (len(drop_charges) - 1)
 
-                plan_output += '&nbsp; &nbsp; <b>{}</b> - <i>{} ({})</i> - {:,} lbs: '.format(
+                plan_output += '&nbsp; &nbsp; <b>{}</b> - <i>{} ({})</i> - {:,} lbs '.format(
                     self.data['location_names'][node_index], opt_customers_2,
                     self.time_windows_to_am_pm((self.data['customer_time_windows'][node_index])),
                     round(route_load_2))
@@ -1020,6 +1112,7 @@ class RoutingOptimization:
                 round(math.floor((truck_cubic_inches - route_load) / pallet_cubic_inches)))
             plan_output += '<br></br>'
             plan_output += '<br></br>'
+
             print(plan_output)
             opt_total_rate += round(
                 self.opt_rates(((route_load / pallet_cubic_inches) * self.pallet_weight), route_distance,
@@ -1027,18 +1120,64 @@ class RoutingOptimization:
                                drop_charges_count))
             opt_total_distance += route_distance
             opt_total_load += route_load
+
+        # Displaying the Dropped loads from the Time Pelanty
+        def ListDiff(li1, li2):
+            """
+            Returns the difference between two lists, removing the items that are the same.
+            """
+            return (list(set(li1) - set(li2)) + list(set(li2) - set(li1)))
+
+        # City and state not working properly, figure out why
+
+        self.dropped_city_state_list.append(ListDiff(self.filter_location_city_state(), self.node_city_state_list))
+        self.dropped_loads_weight_list.append(ListDiff(self.input_demand(), self.node_weight_list))
+        self.dropped_time_windows_list.append(ListDiff(self.customer_time_windows(), self.node_time_windows_list))
+        self.dropped_customer_list.append(ListDiff(self.filter_customer(), self.node_customer_list))
+        self.dropped_customer_distance_list.append(
+            ListDiff(self.customer_drop_distance(), self.node_customer_distance_list))
+        self.dropped_city_list.append(ListDiff(self.location_city(), self.node_city_list))
+
+        dropped_output = '<br><b><u>Loads Not in Time Windows:</u></b></br>'
+        dropped_rates = 0
+        dropped_weight = 0
+        dropped_distance = 0
+        dropped_trucks = 0
+        for location, weight, time_windows, customer, distance, city in zip(self.dropped_city_state_list.pop(),
+                                                                            self.dropped_loads_weight_list.pop(),
+                                                                            self.dropped_time_windows_list.pop(),
+                                                                            self.dropped_customer_list.pop(),
+                                                                            self.dropped_customer_distance_list.pop(),
+                                                                            self.dropped_city_list.pop()):
+            dropped_output += '<br> &nbsp; &nbsp; <b>{}</b> - <i>{} ({})</i> -  Weight: {:,}</br>'.format(location,
+                                                                                                          customer,
+                                                                                                          self.time_windows_to_am_pm(
+                                                                                                              time_windows),
+                                                                                                          round(weight))
+            # need to get the rate working
+            drop_cities = len(city)
+            dropped_trucks += 1
+            dropped_rates += round(self.opt_rates(weight, distance, None, city, drop_cities), 2)
+            dropped_weight += weight
+            dropped_distance += distance
+            dropped_rate = round(self.opt_rates(weight, distance, None, city, drop_cities), 2)
+            dropped_output += '<br>Mode: {} | Rate: ${} CAD | Distance: {} mi</b>'.format(
+                self.mode(weight, distance, None), dropped_rate, distance)
+            dropped_output += '<br></br>'
+        print(dropped_output)
+
         print_total = '<br>_________________________________________________________________________</br>'
         print_total += '<br><b>Totals:</b></br>'
-        print_total += '<br>Total Trucks Used: {:,} | Total Orders: {} | '.format(self.data['num_vehicles'],
-                                                                                  (len(filter_location_city_state) - 1))
-        print_total += 'Total Distance: {:,} mi | Total Weight: {:,} lbs</br>'.format(opt_total_distance, round(
-            (opt_total_load / pallet_cubic_inches) * self.pallet_weight))
+        print_total += '<br>Total Trucks Used: {:,} | Total Orders: {} | '.format(
+            self.data['num_vehicles'] + dropped_trucks,
+            (len(filter_location_city_state) - 1))
+        print_total += 'Total Distance: {:,} mi | Total Weight: {:,} lbs</br>'.format(
+            opt_total_distance + dropped_distance, round(
+                ((opt_total_load / pallet_cubic_inches) * self.pallet_weight) + dropped_weight))
         # print_total += 'Total Base Rate: ${:,}\n'.format(round((opt_total_rate),2))
         # print_total += 'Total Fuel Rate: ${:,}\n'.format(round((opt_total_distance*fuel),2))
-        print_total += '<br>Total Rate ${:,} CAD | '.format(round(opt_total_rate, 2))
-        print_total += 'Total Drop Charge: ${:,} CAD  (Additional Drops: {})</br>'.format(
-            ((len(filter_location_city_state) - 1) - (self.data['num_vehicles'])) * self.drop_charge,
-            (len(filter_location_city_state) - 1) - (self.data['num_vehicles']))
+        print_total += '<br>Total Rate ${:,} CAD | '.format(round(opt_total_rate + dropped_rates, 2))
+        print_total += 'Total Drops: {}</br>'.format(len(filter_location_city_state) - 1)
         print_total += '<br>Truck Capacity: {:,} % | '.format(
             round((opt_total_load / (truck_cubic_inches * self.data['num_vehicles'])) * 100))
         print_total += 'Pallets Space: {} | '.format(round((opt_total_load) / pallet_cubic_inches))
@@ -1050,11 +1189,11 @@ class RoutingOptimization:
         print_total += '<br></br>'
         print_total += '<br><b>Projections:</b></br>'
         ID = self.df_log['TMS ID'].unique()
-        projected_trucks = len(ID) - self.data['num_vehicles']
+        projected_trucks = len(ID) - (self.data['num_vehicles'] + dropped_trucks)
         print_total += '<br>Reduction in Trucks: {} | '.format(projected_trucks)
-        projected_miles = self.tms_total_distance() - (opt_total_distance)
+        projected_miles = self.tms_total_distance() - (opt_total_distance + dropped_distance)
         print_total += 'Reduction in Miles: {:,} mi | '.format(round(projected_miles))
-        projected_savings = round((self.tms_total_rate()) - (opt_total_rate), 2)
+        projected_savings = round((self.tms_total_rate()) - (opt_total_rate + dropped_rates), 2)
         print_total += 'Savings: ${:,} CAD</br>'.format(projected_savings)
         print_total += '<br>_________________________________________________________________________</br>'
         print_total += '<br>_________________________________________________________________________</br>'
@@ -1167,6 +1306,11 @@ class RoutingOptimization:
             if location_idx != 0 and 1:
                 index = manager.NodeToIndex(location_idx)
                 time_dimension.CumulVar(index).SetRange(time_window[0], time_window[1])
+
+        # Allow to drop nodes (Time Penalty).
+        penalty = 500
+        for node in range(1, len(self.data['time_windows'])):
+            routing.AddDisjunction([manager.NodeToIndex(node)], penalty)
 
         # Add time window constraints for each vehicle start node.
         start_idx = 1
