@@ -130,11 +130,16 @@ class RoutingOptimization:
 
         appt_times_path = self.path + "/time windows/appt_times.csv"
         self.appt_times = pd.read_csv(appt_times_path)
+        self.appt_times['pick_time'] = self.appt_times['pick_time'].fillna(8).astype(int)
+        self.appt_times['drop_time'] = self.appt_times['drop_time'].fillna(17).astype(int)
         self.appt_times['time_windows'] = list(zip(self.appt_times['pick_time'], self.appt_times['drop_time']))
-        self.df = self.df.merge(self.appt_times, how='left',
-                                on=['Delivery Location Name', 'Delivery Location Name'])
+        self.df = pd.merge(self.df, self.appt_times, how='left',
+                           left_on=['Delivery Location Name', 'Delivery Location Postal Code'],
+                           right_on=['Delivery Location Name', 'Delivery Location Postal Code'])
 
         self.df = self.df[self.df['Pick-up Location City'] == 'ST. GEORGE']
+
+        self.df = self.df[self.df['Delivery Location City'] != 'QUÉBEC']
 
         self.df = self.df[(self.df['Delivery Location State/Province'] == 'ON') | (
                 self.df['Delivery Location State/Province'] == 'QC')]
@@ -677,11 +682,11 @@ class RoutingOptimization:
         """
 
         for distance, time in zip(self.df_opt['drop distance'], self.df_opt['time_windows']):
-            if distance < 900:
-                time = ((time[0] - 6) * 100, (time[1] - 6) * 100)
+            if distance < 600:
+                time = ((time[0] - 6) * 60, (time[1] - 6) * 60)
                 self.time_window.append(time)
-            elif distance >= 900:
-                time = (((time[0] - 6) + 24) * 100, ((time[1] - 6) + 24) * 100)
+            elif distance >= 600:
+                time = (((time[0] - 6) + 24) * 60, ((time[1] - 6) + 24) * 60)
                 self.time_window.append(time)
         return self.time_window
 
@@ -690,13 +695,13 @@ class RoutingOptimization:
         formula adds extra distance for loads outside of 24 hours.
         """
         for drop in self.df_opt['drop distance']:
-            if drop >= 900:
-                drop2 = drop + 1_000
+            if drop >= 600:
+                drop2 = drop + 550
                 self.drop_distance.append(drop2)
                 for number, bounds in zip(self.drop_distance, self.time_window):
                     if (bounds[0] <= number <= bounds[1]) == False:
-                        if (bounds[0] - number) < 1_000 and (bounds[0] - number) >= 0:
-                            number2 = number + (((bounds[0] - number) + (bounds[1] - number)) / 2)
+                        if (bounds[0] - number) < 600 and (bounds[0] - number) >= 0:
+                            number2 = number + (bounds[0] - number)
                             self.drop_distance.remove(number)
                             self.drop_distance.append(number2)
                         elif (bounds[0] - number) < 0:
@@ -705,7 +710,7 @@ class RoutingOptimization:
                             self.drop_distance.append(number2)
                         else:
                             drop
-            else:
+            elif drop < 600:
                 self.drop_distance.append(drop)
 
         return self.drop_distance
@@ -1296,8 +1301,8 @@ class RoutingOptimization:
         time = 'Time'
         routing.AddDimension(
             transit_callback_index,
-            30,  # allow waiting time
-            4000,  # maximum time per vehicle (Think about it as max distance per vehicle)
+            8_000,  # allow waiting time
+            8_000,  # maximum time per vehicle (Think about it as max distance per vehicle)
             False,  # Don't force start cumul to zero.
             time)
         time_dimension = routing.GetDimensionOrDie(time)
@@ -1308,7 +1313,7 @@ class RoutingOptimization:
                 time_dimension.CumulVar(index).SetRange(time_window[0], time_window[1])
 
         # Allow to drop nodes (Time Penalty).
-        penalty = 500
+        penalty = 8_000
         for node in range(1, len(self.data['time_windows'])):
             routing.AddDisjunction([manager.NodeToIndex(node)], penalty)
 
@@ -1350,7 +1355,7 @@ class RoutingOptimization:
             demand_callback)
         routing.AddDimensionWithVehicleCapacity(
             demand_callback_index,
-            0,  # null capacity slack
+            1,  # null capacity slack
             self.data['vehicle_capacities'],  # vehicle maximum capacities
             True,  # start cumul to zero
             'Capacity')

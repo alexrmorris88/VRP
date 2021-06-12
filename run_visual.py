@@ -125,9 +125,22 @@ class RoutingGuide(Ui_MainWindow):
         self.ro.pick_lat_fol.clear()  # Clears the list from the Routing __init__ method
         self.ro.pick_lon_fol.clear()  # Clears the list from the Routing __init__ method
 
-        self.ro.carrier_holder.clear() # Clears the list from the Routing __init__ method
-        self.ro.time_window.clear() # Clears the list from the Routing __init__ method
-        self.ro.drop_distance.clear() # Clears the list from the Routing __init__ method
+        self.ro.carrier_holder.clear()  # Clears the list from the Routing __init__ method
+        self.ro.time_window.clear()  # Clears the list from the Routing __init__ method
+        self.ro.drop_distance.clear()  # Clears the list from the Routing __init__ method
+
+        self.ro.dropped_city_state_list.clear()  # Clears the list from the Routing __init__ method
+        self.ro.node_city_state_list.clear()  # Clears the list from the Routing __init__ method
+        self.ro.node_weight_list.clear()  # Clears the list from the Routing __init__ method
+        self.ro.dropped_loads_weight_list.clear()  # Clears the list from the Routing __init__ method
+        self.ro.node_time_windows_list.clear()  # Clears the list from the Routing __init__ method
+        self.ro.dropped_time_windows_list.clear()  # Clears the list from the Routing __init__ method
+        self.ro.node_customer_list.clear()  # Clears the list from the Routing __init__ method
+        self.ro.dropped_customer_list.clear()  # Clears the list from the Routing __init__ method
+        self.ro.node_customer_distance_list.clear()  # Clears the list from the Routing __init__ method
+        self.ro.dropped_customer_distance_list.clear()  # Clears the list from the Routing __init__ method
+        self.ro.dropped_city_list.clear()  # Clears the list from the Routing __init__ method
+        self.ro.node_city_list.clear()  # Clears the list from the Routing __init__ method
 
     def num_of_stops_loads(self):
         """
@@ -196,38 +209,24 @@ class RoutingGuide(Ui_MainWindow):
         opt_map.save(data, close_file=False)  # add the map to a bytes method to display in the QtWebEngineWidgets
         self.opt_orders_webView.setHtml(data.getvalue().decode())
 
-        self.ro.vehicle_count_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.vehicle_id_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.opt_customers_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.opt_customers_list_2.clear()  # Clears the list from the Routing __init__ method
-        self.ro.opt_customer_location_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.opt_weight_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.opt_lat_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.opt_lon_list.clear()  # Clears the list from the Routing __init__ method
+        self.oo.vehicle_count_list.clear()  # Clears the list from the Orders __init__ method
+        self.oo.vehicle_id_list.clear()  # Clears the list from the Orders __init__ method
+        self.oo.opt_customers_list.clear()  # Clears the list from the Orders __init__ method
+        self.oo.opt_customers_list_2.clear()  # Clears the list from the Orders __init__ method
+        self.oo.opt_customer_location_list.clear()  # Clears the list from the Orders __init__ method
+        self.oo.opt_weight_list.clear()  # Clears the list from the Orders __init__ method
+        self.oo.opt_lat_list.clear()  # Clears the list from the Orders __init__ method
+        self.oo.opt_lon_list.clear()  # Clears the list from the Orders __init__ method
 
-        self.ro.pick_state_fol.clear()  # Clears the list from the Routing __init__ method
-        self.ro.pick_city_fol.clear()  # Clears the list from the Routing __init__ method
-        self.ro.pick_weight_fol.clear()  # Clears the list from the Routing __init__ method
-        self.ro.pick_loc_fol.clear()  # Clears the list from the Routing __init__ method
-        self.ro.pick_lat_fol.clear()  # Clears the list from the Routing __init__ method
-        self.ro.pick_lon_fol.clear()  # Clears the list from the Routing __init__ method
+        self.oo.pick_state_fol.clear()  # Clears the list from the Orders __init__ method
+        self.oo.pick_city_fol.clear()  # Clears the list from the Orders __init__ method
+        self.oo.pick_weight_fol.clear()  # Clears the list from the Orders __init__ method
+        self.oo.pick_loc_fol.clear()  # Clears the list from the Orders __init__ method
+        self.oo.pick_lat_fol.clear()  # Clears the list from the Orders __init__ method
+        self.oo.pick_lon_fol.clear()  # Clears the list from the Orders __init__ method
 
-        self.ro.carrier_holder.clear()  # Clears the list from the Routing __init__ method
-        self.ro.time_window.clear()  # Clears the list from the Routing __init__ method
-        self.ro.drop_distance.clear()  # Clears the list from the Routing __init__ method
-
-        self.ro.dropped_city_state_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.node_city_state_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.node_weight_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.dropped_loads_weight_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.node_time_windows_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.dropped_time_windows_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.node_customer_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.dropped_customer_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.node_customer_distance_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.dropped_customer_distance_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.dropped_city_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.node_city_list.clear()  # Clears the list from the Routing __init__ method
+        self.oo.time_window.clear() # Clears the list from the Orders __init__ method
+        self.oo.drop_distance.clear() # Clears the list from the Orders __init__ method
 
     def num_of_stops_orders(self):
         """
