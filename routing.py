@@ -10,10 +10,13 @@ import pandas as pd
 from functools import reduce
 from itertools import cycle
 
+from pandas import DataFrame
+
 pd.set_option('display.max_columns', None)
 
 
 class RoutingOptimization:
+
     fuel = 0.65
     drop_charge = 75
 
@@ -649,7 +652,7 @@ class RoutingOptimization:
         Cubic inch conversion for the pallets, from the optimization dataframe
         """
         pallet_cubic_inches = (
-                                          self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
+                                      self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
         return pallet_cubic_inches
 
     def customer_time_windows(self):
@@ -675,7 +678,6 @@ class RoutingOptimization:
     # =============================================================================
     # Time windows
     # =============================================================================
-
     def time_windows_to_distance(self):
         """
         Converting the time windows to distance windows
@@ -726,7 +728,7 @@ class RoutingOptimization:
 
         '''Cubic weight in Inches for a pallet'''
         pallet_cubic_inches = (
-                                          self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
+                                      self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
         pallet_count_unrounded = [x / self.pallet_weight for x in input_demand]
         # pallet_count = [ math.ceil(x / pallet_weight) for x in input_demand]
         demand_cube = [x * pallet_cubic_inches for x in pallet_count_unrounded]
@@ -1134,6 +1136,19 @@ class RoutingOptimization:
             return (list(set(li1) - set(li2)) + list(set(li2) - set(li1)))
 
         # City and state not working properly, figure out why
+
+        self.dropped_loads = pd.DataFrame({'City_State': self.node_city_state_list, 'Weight': self.node_weight_list,
+                                           'Time Window': self.node_time_windows_list, 'Customer Name': self.node_customer_list,
+                                           'Distance': self.node_customer_distance_list, 'City': self.node_city_list})
+
+        self.dropped_loads_comparison = pd.DataFrame({'City_State': self.data['location_names'], 'Weight': self.data['weight'],
+                                           'Time Window': self.data['customer_time_windows'], 'Customer Name': self.data['customer'],
+                                           'Distance': self.data['customer_distance'], 'City': self.data['drop_city']})
+
+
+        # Figure this out! Could be the key to fixing this issue
+        dropped_city = [(a.replace(b)) for a, b in zip(self.dropped_loads_comparison['City_State'], self.dropped_loads['City_State'])]
+        print(dropped_city)
 
         self.dropped_city_state_list.append(ListDiff(self.filter_location_city_state(), self.node_city_state_list))
         self.dropped_loads_weight_list.append(ListDiff(self.input_demand(), self.node_weight_list))
