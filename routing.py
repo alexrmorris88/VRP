@@ -16,7 +16,6 @@ pd.set_option('display.max_columns', None)
 
 
 class RoutingOptimization:
-
     fuel = 0.65
     drop_charge = 75
 
@@ -66,18 +65,13 @@ class RoutingOptimization:
         self.time_window = []  # used to hold the time windows converted into distance
         self.drop_distance = []
 
-        self.dropped_city_state_list = []  # City and State for the dropped locations
         self.node_city_state_list = []  # City and State associated with each node
         self.node_weight_list = []  # Weight associated with each node
-        self.dropped_loads_weight_list = []  # Weight for the dropped locations
         self.node_time_windows_list = []  # time windows for the each node
-        self.dropped_time_windows_list = []  # Time Windows for the dropped locations
         self.node_customer_list = []  # Customer names associated with each node
-        self.dropped_customer_list = []  # Customer names for the dropped locations
         self.node_customer_distance_list = []  # distance associated with each node
-        self.dropped_customer_distance_list = []  # Distance for the dropped locations
-        self.dropped_city_list = []  # City for the dropped locations
         self.node_city_list = []  # City associated with each node
+        self.node_state_list = []  # State associated with each node
 
     # =============================================================================
     # Adding Data
@@ -685,7 +679,7 @@ class RoutingOptimization:
 
         for distance, time in zip(self.df_opt['drop distance'], self.df_opt['time_windows']):
             if distance < 600:
-                time = ((time[0] - 6) * 60, (time[1] - 6) * 60)
+                time = ((time[0] - 0) * 60, (time[1] - 0) * 60)
                 self.time_window.append(time)
             elif distance >= 600:
                 time = (((time[0] - 6) + 24) * 60, ((time[1] - 6) + 24) * 60)
@@ -1064,6 +1058,7 @@ class RoutingOptimization:
                 self.node_customer_list.append(self.data['customer'][node_index])
                 self.node_customer_distance_list.append(self.data['customer_distance'][node_index])
                 self.node_city_list.append(self.data['drop_city'][node_index])
+                self.node_state_list.append(self.data['drop_state'][node_index])
 
                 route_load += self.data['demands'][node_index]
                 route_load_2 = self.data['weight'][node_index]
@@ -1128,61 +1123,75 @@ class RoutingOptimization:
             opt_total_distance += route_distance
             opt_total_load += route_load
 
-        # Displaying the Dropped loads from the Time Pelanty
-        def ListDiff(li1, li2):
-            """
-            Returns the difference between two lists, removing the items that are the same.
-            """
-            return (list(set(li1) - set(li2)) + list(set(li2) - set(li1)))
-
-        # City and state not working properly, figure out why
+        # prints the dropped loads that didn't fit into the time windows
 
         self.dropped_loads = pd.DataFrame({'City_State': self.node_city_state_list, 'Weight': self.node_weight_list,
-                                           'Time Window': self.node_time_windows_list, 'Customer Name': self.node_customer_list,
-                                           'Distance': self.node_customer_distance_list, 'City': self.node_city_list})
+                                           'Time Window': self.node_time_windows_list,
+                                           'Customer Name': self.node_customer_list,
+                                           'Distance': self.node_customer_distance_list, 'City': self.node_city_list,
+                                           'State': self.node_state_list})
+        self.dropped_loads = self.dropped_loads.set_index('City_State')
 
-        self.dropped_loads_comparison = pd.DataFrame({'City_State': self.data['location_names'], 'Weight': self.data['weight'],
-                                           'Time Window': self.data['customer_time_windows'], 'Customer Name': self.data['customer'],
-                                           'Distance': self.data['customer_distance'], 'City': self.data['drop_city']})
+        self.pre_rouded_loads = pd.DataFrame({'City_State': self.data['location_names'], 'Weight': self.data['weight'],
+                                              'Time Window': self.data['customer_time_windows'],
+                                              'Customer Name': self.data['customer'],
+                                              'Distance': self.data['customer_distance'],
+                                              'City': self.data['drop_city'],
+                                              'State': self.data['drop_state']})
+        self.pre_rouded_loads = self.pre_rouded_loads.set_index('City_State')
 
+        dropped_loads_comparison = pd.concat([self.dropped_loads, self.pre_rouded_loads]).drop_duplicates(
+            keep=False).drop('dummy', axis=0).reset_index()
 
-        # Figure this out! Could be the key to fixing this issue
-        dropped_city = [(a.replace(b)) for a, b in zip(self.dropped_loads_comparison['City_State'], self.dropped_loads['City_State'])]
-        print(dropped_city)
-
-        self.dropped_city_state_list.append(ListDiff(self.filter_location_city_state(), self.node_city_state_list))
-        self.dropped_loads_weight_list.append(ListDiff(self.input_demand(), self.node_weight_list))
-        self.dropped_time_windows_list.append(ListDiff(self.customer_time_windows(), self.node_time_windows_list))
-        self.dropped_customer_list.append(ListDiff(self.filter_customer(), self.node_customer_list))
-        self.dropped_customer_distance_list.append(
-            ListDiff(self.customer_drop_distance(), self.node_customer_distance_list))
-        self.dropped_city_list.append(ListDiff(self.location_city(), self.node_city_list))
+        dropped_weight = dropped_loads_comparison["Weight"].astype(float).tolist()
+        dropped_distance = dropped_loads_comparison["Distance"].astype(float).tolist()
+        dropped_city_state = dropped_loads_comparison["City_State"].astype(str).tolist()
+        dropped_customer_name = dropped_loads_comparison["Customer Name"].astype(str).tolist()
+        dropped_city = dropped_loads_comparison["City"].astype(str).tolist()
+        dropped_state = dropped_loads_comparison["State"].astype(str).tolist()
+        dropped_time_window = dropped_loads_comparison["Time Window"].tolist()
 
         dropped_output = '<br><b><u>Loads Not in Time Windows:</u></b></br>'
         dropped_rates = 0
-        dropped_weight = 0
-        dropped_distance = 0
+        dropped__weight = 0
+        dropped__distance = 0
         dropped_trucks = 0
-        for location, weight, time_windows, customer, distance, city in zip(self.dropped_city_state_list.pop(),
-                                                                            self.dropped_loads_weight_list.pop(),
-                                                                            self.dropped_time_windows_list.pop(),
-                                                                            self.dropped_customer_list.pop(),
-                                                                            self.dropped_customer_distance_list.pop(),
-                                                                            self.dropped_city_list.pop()):
-            dropped_output += '<br> &nbsp; &nbsp; <b>{}</b> - <i>{} ({})</i> -  Weight: {:,}</br>'.format(location,
-                                                                                                          customer,
-                                                                                                          self.time_windows_to_am_pm(
-                                                                                                              time_windows),
-                                                                                                          round(weight))
+        for customer, city, state, city_state, distance, weight, tw in zip(dropped_customer_name,
+                                                                           dropped_city,
+                                                                           dropped_state,
+                                                                           dropped_city_state,
+                                                                           dropped_distance,
+                                                                           dropped_weight,
+                                                                           dropped_time_window):
+            dropped_output += '<br> &nbsp; &nbsp; <b>{}</b> - <i>{} ({})</i> -  Weight: {:,}</br>'.format(
+                city_state,
+                customer,
+                self.time_windows_to_am_pm(tw),
+                round(weight))
             # need to get the rate working
             drop_cities = len(city)
             dropped_trucks += 1
-            dropped_rates += round(self.opt_rates(weight, distance, None, city, drop_cities), 2)
-            dropped_weight += weight
-            dropped_distance += distance
-            dropped_rate = round(self.opt_rates(weight, distance, None, city, drop_cities), 2)
+            dropped_rates += round(
+                self.opt_rates(weight,
+                               distance,
+                               state,
+                               city,
+                               drop_cities), 2)
+
+            dropped__weight += weight
+            dropped__distance += distance
+            dropped_rate = round(
+                self.opt_rates(weight,
+                               distance,
+                               state,
+                               city,
+                               drop_cities), 2)
             dropped_output += '<br>Mode: {} | Rate: ${} CAD | Distance: {} mi</b>'.format(
-                self.mode(weight, distance, None), dropped_rate, distance)
+                self.mode(weight,
+                          distance,
+                          state),
+                dropped_rate,
+                distance)
             dropped_output += '<br></br>'
         print(dropped_output)
 
@@ -1192,8 +1201,8 @@ class RoutingOptimization:
             self.data['num_vehicles'] + dropped_trucks,
             (len(filter_location_city_state) - 1))
         print_total += 'Total Distance: {:,} mi | Total Weight: {:,} lbs</br>'.format(
-            opt_total_distance + dropped_distance, round(
-                ((opt_total_load / pallet_cubic_inches) * self.pallet_weight) + dropped_weight))
+            opt_total_distance + dropped__distance, round(
+                ((opt_total_load / pallet_cubic_inches) * self.pallet_weight) + dropped__weight))
         # print_total += 'Total Base Rate: ${:,}\n'.format(round((opt_total_rate),2))
         # print_total += 'Total Fuel Rate: ${:,}\n'.format(round((opt_total_distance*fuel),2))
         print_total += '<br>Total Rate ${:,} CAD | '.format(round(opt_total_rate + dropped_rates, 2))
@@ -1211,7 +1220,7 @@ class RoutingOptimization:
         ID = self.df_log['TMS ID'].unique()
         projected_trucks = len(ID) - (self.data['num_vehicles'] + dropped_trucks)
         print_total += '<br>Reduction in Trucks: {} | '.format(projected_trucks)
-        projected_miles = self.tms_total_distance() - (opt_total_distance + dropped_distance)
+        projected_miles = self.tms_total_distance() - (opt_total_distance + dropped__distance)
         print_total += 'Reduction in Miles: {:,} mi | '.format(round(projected_miles))
         projected_savings = round((self.tms_total_rate()) - (opt_total_rate + dropped_rates), 2)
         print_total += 'Savings: ${:,} CAD</br>'.format(projected_savings)

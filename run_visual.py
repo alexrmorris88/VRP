@@ -16,7 +16,7 @@ from checkable_combobox import CheckableComboBox
 
 
 class RoutingGuide(Ui_MainWindow):
-    currentDay = dt.datetime.now().day  # current day for the carrier filter
+    currentDay = dt.datetime.now().day - 2  # current day for the carrier filter
     currentMonth = dt.datetime.now().month - 1  # current month for the carrier filter
     currentYear = dt.datetime.now().year  # current year for the carrier filter
 
@@ -129,18 +129,13 @@ class RoutingGuide(Ui_MainWindow):
         self.ro.time_window.clear()  # Clears the list from the Routing __init__ method
         self.ro.drop_distance.clear()  # Clears the list from the Routing __init__ method
 
-        self.ro.dropped_city_state_list.clear()  # Clears the list from the Routing __init__ method
         self.ro.node_city_state_list.clear()  # Clears the list from the Routing __init__ method
         self.ro.node_weight_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.dropped_loads_weight_list.clear()  # Clears the list from the Routing __init__ method
         self.ro.node_time_windows_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.dropped_time_windows_list.clear()  # Clears the list from the Routing __init__ method
         self.ro.node_customer_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.dropped_customer_list.clear()  # Clears the list from the Routing __init__ method
         self.ro.node_customer_distance_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.dropped_customer_distance_list.clear()  # Clears the list from the Routing __init__ method
-        self.ro.dropped_city_list.clear()  # Clears the list from the Routing __init__ method
         self.ro.node_city_list.clear()  # Clears the list from the Routing __init__ method
+        self.ro.node_state_list.clear()  # Clears the list from the Routing __init__ method
 
     def num_of_stops_loads(self):
         """
