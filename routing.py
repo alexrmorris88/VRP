@@ -958,7 +958,7 @@ class RoutingOptimization:
 
         return rate
 
-    def mode(self, w, d, s=None):
+    def mode(self, w, d, s):
         """
         Returns the TL or LTL mode for Optimized loads
         """

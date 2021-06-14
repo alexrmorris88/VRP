@@ -71,6 +71,15 @@ class OrderOptimization:
         self.time_window = []  # used to hold the time windows converted into distance
         self.drop_distance = []
 
+        self.node_city_state_list = []  # City and State associated with each node
+        self.node_weight_list = []  # Weight associated with each node
+        self.node_time_windows_list = []  # time windows for the each node
+        self.node_customer_list = []  # Customer names associated with each node
+        self.node_customer_distance_list = []  # distance associated with each node
+        self.node_city_list = []  # City associated with each node
+        self.node_state_list = []  # State associated with each node
+
+
     # =============================================================================
     # Adding Data
     # =============================================================================
@@ -104,9 +113,12 @@ class OrderOptimization:
 
         appt_times_path = self.path + "/base rates/appt_times.csv"
         self.appt_times = pd.read_csv(appt_times_path)
+        self.appt_times['pick_time'] = self.appt_times['pick_time'].fillna(8).astype(int)
+        self.appt_times['drop_time'] = self.appt_times['drop_time'].fillna(17).astype(int)
         self.appt_times['time_windows'] = list(zip(self.appt_times['pick_time'], self.appt_times['drop_time']))
-        self.df = self.df.merge(self.appt_times, how='left',
-                                on=['Delivery Location Name', 'Delivery Location Name'])
+        self.df = pd.merge(self.df, self.appt_times, how='left',
+                           left_on=['Delivery Location Name', 'Delivery Location Postal Code'],
+                           right_on=['Delivery Location Name', 'Delivery Location Postal Code'])
 
         return self.df
 
@@ -117,7 +129,9 @@ class OrderOptimization:
         self.df = self.add_data_orders()
 
         self.df = self.df[self.df['Pick-up Location City'] == 'ST. GEORGE']
-        # self.df = self.df[self.df['Weight (lb)'] > 200]
+
+        self.df = self.df[self.df['Delivery Location City'] != 'QUÉBEC']
+
         self.df = self.df[(self.df['Delivery Location State/Province'] == 'ON') | (
                 self.df['Delivery Location State/Province'] == 'QC')]
 
@@ -441,6 +455,13 @@ class OrderOptimization:
 
         return self.df_opt
 
+    def customer_drop_distance(self):
+        """
+        Converts the drop distance into a list, from the optimization dataframe
+        """
+        self.opt_data()
+        return self.df_opt['drop distance'].tolist()
+
     def location_city(self):
         """
         Converts the city into a list, from the optimization dataframe
@@ -549,18 +570,17 @@ class OrderOptimization:
     # =============================================================================
     # Time windows
     # =============================================================================
-
     def time_windows_to_distance(self):
         """
         Converting the time windows to distance windows
         """
 
         for distance, time in zip(self.df_opt['drop distance'], self.df_opt['time_windows']):
-            if distance < 900:
-                time = ((time[0] - 8) * 100, (time[1] - 8) * 100)
+            if distance < 600:
+                time = ((time[0] - 0) * 60, (time[1] - 0) * 60)
                 self.time_window.append(time)
-            elif distance >= 900:
-                time = (((time[0] - 8) + 24) * 100, ((time[1] - 8) + 24) * 100)
+            elif distance >= 600:
+                time = (((time[0] - 6) + 24) * 60, ((time[1] - 6) + 24) * 60)
                 self.time_window.append(time)
         return self.time_window
 
@@ -569,22 +589,26 @@ class OrderOptimization:
         formula adds extra distance for loads outside of 24 hours.
         """
         for drop in self.df_opt['drop distance']:
-            if drop >= 900:
-                drop2 = drop + 1_000
+            if drop >= 600:
+                drop2 = drop + 550
                 self.drop_distance.append(drop2)
                 for number, bounds in zip(self.drop_distance, self.time_window):
                     if (bounds[0] <= number <= bounds[1]) == False:
-                        if (bounds[0] - number) < 1_000:
+                        if (bounds[0] - number) < 600 and (bounds[0] - number) >= 0:
                             number2 = number + (bounds[0] - number)
                             self.drop_distance.remove(number)
                             self.drop_distance.append(number2)
+                        elif (bounds[0] - number) < 0:
+                            number2 = number
+                            self.drop_distance.remove(number)
+                            self.drop_distance.append(number2)
                         else:
-                            drop2
-            else:
+                            drop
+            elif drop < 600:
                 self.drop_distance.append(drop)
 
         return self.drop_distance
-
+    
     # =============================================================================
     # Weight Conversion
     # =============================================================================
@@ -798,6 +822,7 @@ class OrderOptimization:
         time_matrix = self.time_matrix()
         customer_time_windows = self.customer_time_windows()
         location_city = self.location_city()
+        customer_drop_distance = self.customer_drop_distance()
 
         """Store the data for the problem."""
         self.data = {}
@@ -815,6 +840,8 @@ class OrderOptimization:
         self.data['drop_city'] += location_city
         self.data['customer'] = ['dummy', 'FBD', ]
         self.data['customer'] += filter_customer
+        self.data['customer_distance'] = [0, 0, ]
+        self.data['customer_distance'] += customer_drop_distance
         self.data['demands'] = [0, 0, ]
         self.data['demands'] += demand_cube
         self.data['weight'] = [0, 0, ]
@@ -878,6 +905,15 @@ class OrderOptimization:
             drop_charges = []
             while not routing.IsEnd(index):
                 node_index = manager.IndexToNode(index)
+
+                self.node_city_state_list.append(self.data['location_names'][node_index])
+                self.node_weight_list.append(self.data['weight'][node_index])
+                self.node_time_windows_list.append(self.data['customer_time_windows'][node_index])
+                self.node_customer_list.append(self.data['customer'][node_index])
+                self.node_customer_distance_list.append(self.data['customer_distance'][node_index])
+                self.node_city_list.append(self.data['drop_city'][node_index])
+                self.node_state_list.append(self.data['drop_state'][node_index])
+
                 route_load += self.data['demands'][node_index]
                 route_load_2 = self.data['weight'][node_index]
                 opt_customers = self.data['customer'][node_index]
@@ -942,6 +978,84 @@ class OrderOptimization:
                                drop_charges_count), 2)
             opt_total_distance += route_distance
             opt_total_load += route_load
+
+
+
+        # prints the dropped loads that didn't fit into the time windows
+
+        self.dropped_loads = pd.DataFrame({'City_State': self.node_city_state_list, 'Weight': self.node_weight_list,
+                                           'Time Window': self.node_time_windows_list,
+                                           'Customer Name': self.node_customer_list,
+                                           'Distance': self.node_customer_distance_list,
+                                           'City': self.node_city_list,
+                                           'State': self.node_state_list})
+        self.dropped_loads = self.dropped_loads.set_index('City_State')
+
+        self.pre_rouded_loads = pd.DataFrame(
+            {'City_State': self.data['location_names'], 'Weight': self.data['weight'],
+             'Time Window': self.data['customer_time_windows'],
+             'Customer Name': self.data['customer'],
+             'Distance': self.data['customer_distance'],
+             'City': self.data['drop_city'],
+             'State': self.data['drop_state']})
+        self.pre_rouded_loads = self.pre_rouded_loads.set_index('City_State')
+
+        dropped_loads_comparison = pd.concat([self.dropped_loads, self.pre_rouded_loads]).drop_duplicates(
+            keep=False).drop('dummy', axis=0).reset_index()
+
+        dropped_weight = dropped_loads_comparison["Weight"].astype(float).tolist()
+        dropped_distance = dropped_loads_comparison["Distance"].astype(float).tolist()
+        dropped_city_state = dropped_loads_comparison["City_State"].astype(str).tolist()
+        dropped_customer_name = dropped_loads_comparison["Customer Name"].astype(str).tolist()
+        dropped_city = dropped_loads_comparison["City"].astype(str).tolist()
+        dropped_state = dropped_loads_comparison["State"].astype(str).tolist()
+        dropped_time_window = dropped_loads_comparison["Time Window"].tolist()
+
+        dropped_output = '<br><b><u>Loads Not in Time Windows:</u></b></br>'
+        dropped_rates = 0
+        dropped__weight = 0
+        dropped__distance = 0
+        dropped_trucks = 0
+        for customer, city, state, city_state, distance, weight, tw in zip(dropped_customer_name,
+                                                                           dropped_city,
+                                                                           dropped_state,
+                                                                           dropped_city_state,
+                                                                           dropped_distance,
+                                                                           dropped_weight,
+                                                                           dropped_time_window):
+            dropped_output += '<br> &nbsp; &nbsp; <b>{}</b> - <i>{} ({})</i> -  Weight: {:,}</br>'.format(
+                city_state,
+                customer,
+                self.time_windows_to_am_pm(tw),
+                round(weight))
+            # need to get the rate working
+            drop_cities = len(city)
+            dropped_trucks += 1
+            dropped_rates += round(
+                self.opt_rates(weight,
+                               distance,
+                               state,
+                               city,
+                               drop_cities), 2)
+
+            dropped__weight += weight
+            dropped__distance += distance
+            dropped_rate = round(
+                self.opt_rates(weight,
+                               distance,
+                               state,
+                               city,
+                               drop_cities), 2)
+            dropped_output += '<br>Mode: {} | Rate: ${} CAD | Distance: {} mi</b>'.format(
+                self.mode(weight,
+                          distance,
+                          state),
+                dropped_rate,
+                distance)
+            dropped_output += '<br></br>'
+        print(dropped_output)
+
+
         print_total = '<br>_________________________________________________________________________</br>'
         print_total += '<br><b>Totals:</b></br>'
         print_total += '<br>Total Trucks Used: {:,} | Total Orders: {} | '.format(self.data['num_vehicles'],
@@ -1057,8 +1171,8 @@ class OrderOptimization:
         time = 'Time'
         routing.AddDimension(
             transit_callback_index,
-            30,  # allow waiting time
-            4000,  # maximum time per vehicle (Think about it as max distance per vehicle)
+            8_000,  # allow waiting time
+            8_000,  # maximum time per vehicle (Think about it as max distance per vehicle)
             False,  # Don't force start cumul to zero.
             time)
         time_dimension = routing.GetDimensionOrDie(time)
@@ -1067,6 +1181,11 @@ class OrderOptimization:
             if location_idx != 0 and 1:
                 index = manager.NodeToIndex(location_idx)
                 time_dimension.CumulVar(index).SetRange(time_window[0], time_window[1])
+
+        # Allow to drop nodes (Time Penalty).
+        penalty = 8_000
+        for node in range(1, len(self.data['time_windows'])):
+            routing.AddDisjunction([manager.NodeToIndex(node)], penalty)
 
         # Add time window constraints for each vehicle start node.
         start_idx = 1

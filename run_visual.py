@@ -223,6 +223,14 @@ class RoutingGuide(Ui_MainWindow):
         self.oo.time_window.clear() # Clears the list from the Orders __init__ method
         self.oo.drop_distance.clear() # Clears the list from the Orders __init__ method
 
+        self.oo.node_city_state_list.clear()  # Clears the list from the Routing __init__ method
+        self.oo.node_weight_list.clear()  # Clears the list from the Routing __init__ method
+        self.oo.node_time_windows_list.clear()  # Clears the list from the Routing __init__ method
+        self.oo.node_customer_list.clear()  # Clears the list from the Routing __init__ method
+        self.oo.node_customer_distance_list.clear()  # Clears the list from the Routing __init__ method
+        self.oo.node_city_list.clear()  # Clears the list from the Routing __init__ method
+        self.oo.node_state_list.clear()  # Clears the list from the Routing __init__ method
+
     def num_of_stops_orders(self):
         """
         Controls the number of stop locations on each load for the Orders File
