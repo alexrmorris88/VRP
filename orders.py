@@ -934,8 +934,8 @@ class OrderOptimization:
                 drop_charges_count = (len(drop_charges) - 2)
                 drops = (len(drop_charges) - 1)
 
-                plan_output += '&nbsp; &nbsp;<font size="3"><b>{}</b> <i>- ({}) -</i> {:,} lbs: '.format(
-                    self.data['location_names'][node_index],
+                plan_output += '&nbsp; &nbsp;<font size="3"><b>{}</b> <i>- {} ({}) -</i> {:,} lbs: '.format(
+                    self.data['location_names'][node_index], self.data['customer'][node_index],
                     self.time_windows_to_am_pm(self.data['customer_time_windows'][node_index]), round(route_load_2))
                 plan_output += ', '.join(order_num_data_link['Order Number'][order_num_data_link['lon'] == opt_lon][
                                              order_num_data_link['lat'] == opt_lat][
