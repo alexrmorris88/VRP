@@ -79,7 +79,6 @@ class OrderOptimization:
         self.node_city_list = []  # City associated with each node
         self.node_state_list = []  # State associated with each node
 
-
     # =============================================================================
     # Adding Data
     # =============================================================================
@@ -111,7 +110,7 @@ class OrderOptimization:
         self.df = self.df.merge(self.coordinates, how='left',
                                 on=['Delivery Location Postal Code', 'Delivery Location Postal Code'])
 
-        appt_times_path = self.path + "/base rates/appt_times.csv"
+        appt_times_path = self.path + "/time windows/appt_times.csv"
         self.appt_times = pd.read_csv(appt_times_path)
         self.appt_times['pick_time'] = self.appt_times['pick_time'].fillna(8).astype(int)
         self.appt_times['drop_time'] = self.appt_times['drop_time'].fillna(17).astype(int)
@@ -130,7 +129,7 @@ class OrderOptimization:
 
         self.df = self.df[self.df['Pick-up Location City'] == 'ST. GEORGE']
 
-        self.df = self.df[self.df['Delivery Location City'] != 'QUÉBEC']
+        # self.df = self.df[self.df['Delivery Location City'] != 'QUÉBEC']
 
         self.df = self.df[(self.df['Delivery Location State/Province'] == 'ON') | (
                 self.df['Delivery Location State/Province'] == 'QC')]
@@ -200,14 +199,14 @@ class OrderOptimization:
         print_solution += '<br><b>Totals: </b></br>'
         print_solution += '<br>Total Orders: {} | '.format(len(self.df_log['Order Number']))
         print_solution += 'Total Customers: {:,} | '.format(round(len(self.df_log['Delivery Location Name'].unique())))
-        print_solution += 'Total Weight: {:,} lbs</br>'.format(round(sum(self.df_log['Weight (lb)']), 2))
+        print_solution += 'Total Weight: {:,} lbs</br>'.format(round(sum(self.df_log['Weight (lb)'])))
         print_solution += '<br></br>'
         print_solution += '<br>Total QC Orders: {} | Total ON Orders: {}</br>'.format(
             len(self.df_log['Order Number'][self.df_log['Delivery Location State/Province'] == 'QC']),
             len(self.df_log['Order Number'][self.df_log['Delivery Location State/Province'] == 'ON']))
         print_solution += '<br>Total QC Weight: {:,} | Total ON Weight: {:,}</br>'.format(
-            round(sum(self.df_log['Weight (lb)'][self.df_log['Delivery Location State/Province'] == 'QC']), 2),
-            round(sum(self.df_log['Weight (lb)'][self.df_log['Delivery Location State/Province'] == 'ON']), 2))
+            round(sum(self.df_log['Weight (lb)'][self.df_log['Delivery Location State/Province'] == 'QC'])),
+            round(sum(self.df_log['Weight (lb)'][self.df_log['Delivery Location State/Province'] == 'ON'])))
         print_solution += '<br>_________________________________________________________________________</br>'
         return print_solution
 
@@ -415,11 +414,12 @@ class OrderOptimization:
         self.df_opt = self.df_opt.drop(['weight_filter'], axis=1)
 
         self.df_opt = \
-        self.df_opt.groupby(['Delivery Location Name', 'Pick-up Location City', 'Pick-up Location State/Province',
-                             'Pick-up Location Postal Code', 'Delivery Location City',
-                             'Delivery Location State/Province',
-                             'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate', 'rating',
-                             'lat', 'lon', 'time_windows'])['Weight (lb)'].sum()
+            self.df_opt.groupby(['Delivery Location Name', 'Pick-up Location City', 'Pick-up Location State/Province',
+                                 'Pick-up Location Postal Code', 'Delivery Location City',
+                                 'Delivery Location State/Province',
+                                 'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate',
+                                 'rating',
+                                 'lat', 'lon', 'time_windows'])['Weight (lb)'].sum()
         self.df_opt = self.df_opt.to_frame()
         self.df_opt = self.df_opt.reset_index()
 
@@ -444,14 +444,16 @@ class OrderOptimization:
         self.df_opt = self.df_opt.drop(['weight_filter'], axis=1)
 
         self.df_opt = \
-        self.df_opt.groupby(['Delivery Location Name', 'Pick-up Location City', 'Pick-up Location State/Province',
-                             'Pick-up Location Postal Code', 'Delivery Location City',
-                             'Delivery Location State/Province',
-                             'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate',
-                             'rating_two',
-                             'lat', 'lon', 'time_windows'])['Weight (lb)'].sum()
+            self.df_opt.groupby(['Delivery Location Name', 'Pick-up Location City', 'Pick-up Location State/Province',
+                                 'Pick-up Location Postal Code', 'Delivery Location City',
+                                 'Delivery Location State/Province',
+                                 'Delivery Location Postal Code', 'pick distance', 'drop distance', 'base rate',
+                                 'rating_two',
+                                 'lat', 'lon', 'time_windows'])['Weight (lb)'].sum()
         self.df_opt = self.df_opt.to_frame()
         self.df_opt = self.df_opt.reset_index()
+
+        self.df_opt.sort_values(by=['drop distance'], inplace=True, ascending=True)
 
         return self.df_opt
 
@@ -526,7 +528,7 @@ class OrderOptimization:
 
     def pallet_cubic_inches(self):
         pallet_cubic_inches = (
-                                          self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
+                                      self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
         return pallet_cubic_inches
 
     def customer_time_windows(self):
@@ -577,10 +579,12 @@ class OrderOptimization:
 
         for distance, time in zip(self.df_opt['drop distance'], self.df_opt['time_windows']):
             if distance < 600:
-                time = ((time[0] - 0) * 60, (time[1] - 0) * 60)
+                time = (
+                (time[0] - self.pickup_start_time_under_600) * 60, (time[1] - self.pickup_start_time_under_600) * 60)
                 self.time_window.append(time)
             elif distance >= 600:
-                time = (((time[0] - 6) + 24) * 60, ((time[1] - 6) + 24) * 60)
+                time = (((time[0] - self.pickup_start_time_over_600) + 24) * 60,
+                        ((time[1] - self.pickup_start_time_over_600) + 24) * 60)
                 self.time_window.append(time)
         return self.time_window
 
@@ -589,26 +593,24 @@ class OrderOptimization:
         formula adds extra distance for loads outside of 24 hours.
         """
         for drop in self.df_opt['drop distance']:
-            if drop >= 600:
+            if drop < 600:
+                self.drop_distance.append(drop)
+            elif drop >= 600:
                 drop2 = drop + 550
                 self.drop_distance.append(drop2)
                 for number, bounds in zip(self.drop_distance, self.time_window):
-                    if (bounds[0] <= number <= bounds[1]) == False:
-                        if (bounds[0] - number) < 600 and (bounds[0] - number) >= 0:
-                            number2 = number + (bounds[0] - number)
-                            self.drop_distance.remove(number)
-                            self.drop_distance.append(number2)
-                        elif (bounds[0] - number) < 0:
-                            number2 = number
-                            self.drop_distance.remove(number)
-                            self.drop_distance.append(number2)
-                        else:
-                            drop
-            elif drop < 600:
-                self.drop_distance.append(drop)
-
+                    if number < 600:
+                        pass
+                    elif number >= 600:
+                        if (bounds[0] <= number <= bounds[1]) == False:
+                            if (bounds[0] - number) < 600 and (bounds[0] - number) >= 0:
+                                number2 = number + (bounds[0] - number)
+                                self.drop_distance.append(number2)
+                            elif (bounds[0] - number) < 0:
+                                number2 = number
+                                self.drop_distance.append(number2)
         return self.drop_distance
-    
+
     # =============================================================================
     # Weight Conversion
     # =============================================================================
@@ -618,7 +620,7 @@ class OrderOptimization:
 
         '''Cubic weight in Inches for a pallet'''
         pallet_cubic_inches = (
-                                          self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
+                                      self.pallet_width * self.pallet_height * self.pallet_length) / self.cubic_inche_conversion
         pallet_count_unrounded = [x / self.pallet_weight for x in input_demand]
         # pallet_count = [ math.ceil(x / pallet_weight) for x in input_demand]
         demand_cube = [x * pallet_cubic_inches for x in pallet_count_unrounded]
@@ -761,40 +763,99 @@ class OrderOptimization:
         c = City
         dc = Drops
 
-        LTL rate = (CWT (weight/100) * $CWT) + Fuel (distance * 28%)
-        TL rate = Flat Rate + Fuel (distance * $0.5/mile) + (drops * self.drop_charge)
+        LTL rate = (CWT (weight/100) * $CWT) + Fuel (distance * 25.5%)
+        TL rate = Flat Rate + Fuel (distance * $0.65/mile) + (drops * self.drop_charge)
         """
         if w <= 10_000 and s == 'ON' and c == 'TORONTO' or 'ETOBICOKE' or 'BRAMPTON' or 'BRANTFORD' or 'MISSISSAUGA' or 'WOODBRIDGE' or 'RICHMONDHILL' or 'MILTON' or 'CONCORD' or 'SCARBOROUGH':
-            if w <= 10_000 and w > 5_000:
-                rate = ((w / 100) * 20) + (d * .28)
+            if w <= 10_000 and w > 7_500:
+                rate = ((w / 100) * 16.5718) + (d * .2550)
+            elif w <= 7_500 and w > 5_000:
+                rate = ((w / 100) * 16.0114) + (d * .2550)
             elif w <= 5_000 and w > 2_500:
-                rate = ((w / 100) * 18) + (d * .28)
-            elif w <= 2_500 and w > 1_000:
-                rate = ((w / 100) * 15) + (d * .28)
-            elif w <= 1_000 and w >= 0:
-                rate = ((w / 100) * 13) + (d * .28)
+                rate = ((w / 100) * 17.2431) + (d * .2550)
+            elif w <= 2_500 and w >= 0:
+                rate = ((w / 100) * 19.696) + (d * .2550)
+
+        if w <= 10_000 and s == 'ON' and c == 'OTTAWA':
+            if w <= 10_000 and w > 7_500:
+                rate = ((w / 100) * 15.47) + (d * .2550)
+            elif w <= 7_500 and w > 5_000:
+                rate = ((w / 100) * 15.47) + (d * .2550)
+            elif w <= 5_000 and w > 2_500:
+                rate = ((w / 100) * 18.44) + (d * .2550)
+            elif w <= 2_500 and w >= 0:
+                rate = ((w / 100) * 20.84) + (d * .2550)
+
+        if w <= 10_000 and s == 'ON' and c == 'WHITBY' or 'BELLEVILLE':
+            if w <= 10_000 and w > 7_500:
+                rate = ((w / 100) * 17.9676) + (d * .2550)
+            elif w <= 7_500 and w > 5_000:
+                rate = ((w / 100) * 17.9676) + (d * .2550)
+            elif w <= 5_000 and w > 2_500:
+                rate = ((w / 100) * 17.9676) + (d * .2550)
+            elif w <= 2_500 and w >= 2_000:
+                rate = ((w / 100) * 23.008) + (d * .2550)
+            elif w <= 2_000 and w >= 500:
+                rate = ((w / 100) * 28.6798) + (d * .2550)
+            elif w <= 500 and w >= 0:
+                rate = ((w / 100) * 35.9248) + (d * .2550)
+
+        if w <= 10_000 and s == 'ON' and c == 'CAMBRIDGE' or 'KITCHENER':
+            if w <= 10_000 and w > 5_000:
+                rate = ((w / 100) * 16.66) + (d * .2550)
+            elif w <= 5_000 and w > 2_000:
+                rate = ((w / 100) * 18.44) + (d * .2550)
+            elif w <= 2_000 and w >= 0:
+                rate = ((w / 100) * 20.84) + (d * .2550)
+
+        if w <= 10_000 and s == 'QC' and c == 'NEWRICHMOND':
+            if w <= 10_000 and w > 5_000:
+                rate = ((w / 100) * 8.45) + (d * .2550)
+            elif w <= 5_000 and w > 2_000:
+                rate = ((w / 100) * 9.68) + (d * .2550)
+            elif w <= 2_500 and w >= 1_000:
+                rate = ((w / 100) * 10.27) + (d * .2550)
+            elif w <= 1_000 and w >= 500:
+                rate = ((w / 100) * 10.83) + (d * .2550)
+            elif w <= 500 and w >= 0:
+                rate = ((w / 100) * 14.05) + (d * .2550)
+
+        if w <= 10_000 and s == 'QC' and c == 'QUÉBEC' or 'SAINT-NICOLAS':
+            if w <= 10_000 and w > 7_500:
+                rate = ((w / 100) * 15.297) + (d * .2550)
+            elif w <= 7_500 and w > 5_000:
+                rate = ((w / 100) * 14.7798) + (d * .2550)
+            elif w <= 5_000 and w > 2_500:
+                rate = ((w / 100) * 16.0114) + (d * .2550)
+            elif w <= 2_500 and w >= 0:
+                rate = ((w / 100) * 18.4644) + (d * .2550)
 
         if w <= 10_000 and s == 'QC' and c == 'MONTRÉAL' or 'BOUCHERVILLE' or 'ANJOU' or 'DORVAL' or 'LACHINE' or 'SAINT-LAURENT' or 'SAINT-LÉONARD' or 'VARENNES' or 'CHAMBLY' or 'DRUMMONDVILLE' or 'MIRABEL' or 'NICOLET' or 'SAINTE-PERPETUE':
-            if w <= 10_000 and w > 5_000:
-                rate = ((w / 100) * 18) + (d * .28)
+            if w <= 10_000 and w > 7_500:
+                rate = ((w / 100) * 15.297) + (d * .2550)
+            elif w <= 7_500 and w > 5_000:
+                rate = ((w / 100) * 14.7798) + (d * .2550)
             elif w <= 5_000 and w > 2_500:
-                rate = ((w / 100) * 15) + (d * .28)
-            elif w <= 2_500 and w > 1_000:
-                rate = ((w / 100) * 13) + (d * .28)
-            elif w <= 1_000 and w >= 0:
-                rate = ((w / 100) * 11) + (d * .28)
+                rate = ((w / 100) * 16.0114) + (d * .2550)
+            elif w <= 2_500 and w >= 0:
+                rate = ((w / 100) * 18.4644) + (d * .2550)
 
         if w > 10_000 and s == 'ON':
-            rate = 2_500 + (d * 0.5) + (dc * self.drop_charge)
+            rate = 2_050 + (d * 0.65) + (dc * self.drop_charge)
         else:
             if w > 10_000 and s == 'QC':
-                rate = 2_000 + (d * 0.5) + (dc * self.drop_charge)
+                rate = 1665.63 + (d * 0.65) + (dc * self.drop_charge)
 
         return rate
 
     def mode(self, w, d, s):
         """
         Returns the TL or LTL mode for Optimized loads
+
+        w = Weight
+        d = Distance
+        s = State
+        c = City
         """
         if w <= 10_000:
             mode = 'LTL'
@@ -979,8 +1040,6 @@ class OrderOptimization:
             opt_total_distance += route_distance
             opt_total_load += route_load
 
-
-
         # prints the dropped loads that didn't fit into the time windows
 
         self.dropped_loads = pd.DataFrame({'City_State': self.node_city_state_list, 'Weight': self.node_weight_list,
@@ -1023,7 +1082,7 @@ class OrderOptimization:
                                                                            dropped_distance,
                                                                            dropped_weight,
                                                                            dropped_time_window):
-            dropped_output += '<br> &nbsp; &nbsp; <b>{}</b> - <i>{} ({})</i> -  Weight: {:,}</br>'.format(
+            dropped_output += '<br> &nbsp; &nbsp; <b>{}</b> - <i>{} ({})</i> -  Weight: {:,} lbs</br>'.format(
                 city_state,
                 customer,
                 self.time_windows_to_am_pm(tw),
@@ -1053,21 +1112,25 @@ class OrderOptimization:
                 dropped_rate,
                 distance)
             dropped_output += '<br></br>'
-        print(dropped_output)
 
+        if len(dropped_loads_comparison["Weight"]) <= 0:
+            print(" ")
+        else:
+            print(dropped_output)
 
         print_total = '<br>_________________________________________________________________________</br>'
         print_total += '<br><b>Totals:</b></br>'
-        print_total += '<br>Total Trucks Used: {:,} | Total Orders: {} | '.format(self.data['num_vehicles'],
-                                                                                  (len(filter_location_city) - 1))
-        print_total += 'Total Distance: {:,} mi | Total Weight: {:,} lbs</br>'.format(opt_total_distance, round(
-            (opt_total_load / pallet_cubic_inches) * self.pallet_weight))
+        print_total += '<br>Total Trucks Used: {:,} | Total Orders: {} | '.format(
+            self.data['num_vehicles'] + dropped_trucks,
+            (len(filter_location_city) - 1))
+        print_total += 'Total Distance: {:,} mi | Total Weight: {:,} lbs</br>'.format(
+            opt_total_distance + dropped__distance, round(
+                (opt_total_load / pallet_cubic_inches) * self.pallet_weight) + dropped__weight)
         # print_total += 'Total Base Rate: ${:,}\n'.format(round((opt_total_rate),2))
         # print_total += 'Total Fuel Rate: ${:,}\n'.format(round((opt_total_distance*fuel),2))
-        print_total += '<br>Total Rate ${:,} CAD | '.format(round(opt_total_rate, 2))
-        print_total += 'Total Drop Charge: ${:,} CAD  (Additional Drops: {})</br>'.format(
-            ((len(filter_location_city) - 1) - (self.data['num_vehicles'])) * self.drop_charge,
-            (len(filter_location_city) - 1) - (self.data['num_vehicles']))
+        print_total += '<br>Total Rate ${:,} CAD | '.format(round(opt_total_rate + dropped_rates, 2))
+        print_total += 'Total Drops: {}</br>'.format(
+            (len(filter_location_city) - 1))
         print_total += '<br>Truck Capacity: {:,} % | '.format(
             round((opt_total_load / (truck_cubic_inches * self.data['num_vehicles'])) * 100))
         print_total += 'Pallets Space: {} | '.format(round((opt_total_load) / pallet_cubic_inches))

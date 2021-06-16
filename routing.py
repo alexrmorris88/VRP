@@ -85,6 +85,9 @@ class RoutingOptimization:
         self.df = pd.concat([pd.read_csv(f) for f in all_filenames]).drop_duplicates().reset_index(drop=True)
 
         self.df['Weight (lb)'] = self.df['Weight (lb)'].astype(float)
+        self.df['Payable Total Rate (Reporting Currency)'] = self.df['Payable Base Rate (Reporting Currency)'] + \
+                                                             self.df['Payable Fuel Surcharge (Reporting Currency)'] + \
+                                                             self.df['Payable Stop Off Charges (Reporting Currency)']
         self.df['Payable Total Rate (Reporting Currency)'] = self.df['Payable Total Rate (Reporting Currency)'].astype(
             float)
 
@@ -136,7 +139,7 @@ class RoutingOptimization:
 
         self.df = self.df[self.df['Pick-up Location City'] == 'ST. GEORGE']
 
-        self.df = self.df[self.df['Delivery Location City'] != 'QUÉBEC']
+        # self.df = self.df[self.df['Delivery Location City'] != 'QUÉBEC']
 
         self.df = self.df[(self.df['Delivery Location State/Province'] == 'ON') | (
                 self.df['Delivery Location State/Province'] == 'QC')]
@@ -679,10 +682,12 @@ class RoutingOptimization:
 
         for distance, time in zip(self.df_opt['drop distance'], self.df_opt['time_windows']):
             if distance < 600:
-                time = ((time[0] - 0) * 60, (time[1] - 0) * 60)
+                time = (
+                (time[0] - self.pickup_start_time_under_600) * 60, (time[1] - self.pickup_start_time_under_600) * 60)
                 self.time_window.append(time)
             elif distance >= 600:
-                time = (((time[0] - 6) + 24) * 60, ((time[1] - 6) + 24) * 60)
+                time = (((time[0] - self.pickup_start_time_over_600) + 24) * 60,
+                        ((time[1] - self.pickup_start_time_over_600) + 24) * 60)
                 self.time_window.append(time)
         return self.time_window
 
@@ -691,24 +696,22 @@ class RoutingOptimization:
         formula adds extra distance for loads outside of 24 hours.
         """
         for drop in self.df_opt['drop distance']:
-            if drop >= 600:
+            if drop < 600:
+                self.drop_distance.append(drop)
+            elif drop >= 600:
                 drop2 = drop + 550
                 self.drop_distance.append(drop2)
                 for number, bounds in zip(self.drop_distance, self.time_window):
-                    if (bounds[0] <= number <= bounds[1]) == False:
-                        if (bounds[0] - number) < 600 and (bounds[0] - number) >= 0:
-                            number2 = number + (bounds[0] - number)
-                            self.drop_distance.remove(number)
-                            self.drop_distance.append(number2)
-                        elif (bounds[0] - number) < 0:
-                            number2 = number
-                            self.drop_distance.remove(number)
-                            self.drop_distance.append(number2)
-                        else:
-                            drop
-            elif drop < 600:
-                self.drop_distance.append(drop)
-
+                    if number < 600:
+                        pass
+                    elif number >= 600:
+                        if (bounds[0] <= number <= bounds[1]) == False:
+                            if (bounds[0] - number) < 600 and (bounds[0] - number) >= 0:
+                                number2 = number + (bounds[0] - number)
+                                self.drop_distance.append(number2)
+                            elif (bounds[0] - number) < 0:
+                                number2 = number
+                                self.drop_distance.append(number2)
         return self.drop_distance
 
     # =============================================================================
@@ -961,6 +964,11 @@ class RoutingOptimization:
     def mode(self, w, d, s):
         """
         Returns the TL or LTL mode for Optimized loads
+
+        w = Weight
+        d = Distance
+        s = State
+        c = City
         """
         if w <= 10_000:
             mode = 'LTL'
@@ -1163,7 +1171,7 @@ class RoutingOptimization:
                                                                            dropped_distance,
                                                                            dropped_weight,
                                                                            dropped_time_window):
-            dropped_output += '<br> &nbsp; &nbsp; <b>{}</b> - <i>{} ({})</i> -  Weight: {:,}</br>'.format(
+            dropped_output += '<br> &nbsp; &nbsp; <b>{}</b> - <i>{} ({})</i> -  Weight: {:,} lbs</br>'.format(
                 city_state,
                 customer,
                 self.time_windows_to_am_pm(tw),
@@ -1193,7 +1201,11 @@ class RoutingOptimization:
                 dropped_rate,
                 distance)
             dropped_output += '<br></br>'
-        print(dropped_output)
+
+        if len(dropped_loads_comparison["Weight"]) <= 0:
+            print(" ")
+        else:
+            print(dropped_output)
 
         print_total = '<br>_________________________________________________________________________</br>'
         print_total += '<br><b>Totals:</b></br>'
