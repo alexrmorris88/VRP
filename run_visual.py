@@ -16,8 +16,8 @@ from checkable_combobox import CheckableComboBox
 
 
 class RoutingGuide(Ui_MainWindow):
-    currentDay = dt.datetime.now().day - 2  # current day for the carrier filter
-    currentMonth = dt.datetime.now().month - 1  # current month for the carrier filter
+    currentDay = dt.datetime.now().day  # current day for the carrier filter
+    currentMonth = dt.datetime.now().month  # current month for the carrier filter
     currentYear = dt.datetime.now().year  # current year for the carrier filter
 
     def __init__(self, window, ro, oo):
@@ -40,6 +40,12 @@ class RoutingGuide(Ui_MainWindow):
         self.oo = oo
         self.oo.add_data_orders()  # preload the data from the Orders file for faster runtimes
         self.oo.location_filters_orders()  # preload the data from the Orders file for faster runtimes
+
+        self.ro.pickup_start_time_under_600 = 0  # start time for loads under 600mi in the routing.py file time_windows_to_distance() method
+        self.ro.pickup_start_time_over_600 = 6  # start time for loads over 600mi in the routing.py file time_windows_to_distance() method
+
+        self.oo.pickup_start_time_under_600 = 0  # start time for loads under 600mi in the orders.py file time_windows_to_distance() method
+        self.oo.pickup_start_time_over_600 = 6  # start time for loads over 600mi in the orders.py file time_windows_to_distance() method
 
     # =============================================================================
     # Loads tab in the PyQt5 Visual
@@ -220,8 +226,8 @@ class RoutingGuide(Ui_MainWindow):
         self.oo.pick_lat_fol.clear()  # Clears the list from the Orders __init__ method
         self.oo.pick_lon_fol.clear()  # Clears the list from the Orders __init__ method
 
-        self.oo.time_window.clear() # Clears the list from the Orders __init__ method
-        self.oo.drop_distance.clear() # Clears the list from the Orders __init__ method
+        self.oo.time_window.clear()  # Clears the list from the Orders __init__ method
+        self.oo.drop_distance.clear()  # Clears the list from the Orders __init__ method
 
         self.oo.node_city_state_list.clear()  # Clears the list from the Routing __init__ method
         self.oo.node_weight_list.clear()  # Clears the list from the Routing __init__ method
