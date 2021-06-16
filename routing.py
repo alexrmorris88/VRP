@@ -906,7 +906,22 @@ class RoutingOptimization:
                 rate = 1_500 + (d * 0.55) + (dc * self.drop_charge)
 
         return rate
+    
+    def mode(self, w, d, s):
+        """
+        Returns the TL or LTL mode for Optimized loads
 
+        w = Weight
+        d = Distance
+        s = State
+        c = City
+        """
+        if w <= 10_000:
+            mode = 'LTL'
+        else:
+            if w > 10_000:
+                mode = 'TL'
+        return mode
     # =============================================================================
     # Routing Guide
     # =============================================================================
