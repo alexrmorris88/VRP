@@ -881,101 +881,31 @@ class RoutingOptimization:
         """
         if w <= 10_000 and s == 'ON' and c == 'TORONTO' or 'ETOBICOKE' or 'BRAMPTON' or 'BRANTFORD' or 'MISSISSAUGA' or 'WOODBRIDGE' or 'RICHMONDHILL' or 'MILTON' or 'CONCORD' or 'SCARBOROUGH':
             if w <= 10_000 and w > 7_500:
-                rate = ((w / 100) * 16.5718) + (d * .2550)
+                rate = ((w / 100) * 16) + (d * .28)
             elif w <= 7_500 and w > 5_000:
-                rate = ((w / 100) * 16.0114) + (d * .2550)
+                rate = ((w / 100) * 18) + (d * .28)
             elif w <= 5_000 and w > 2_500:
-                rate = ((w / 100) * 17.2431) + (d * .2550)
+                rate = ((w / 100) * 20) + (d * .28)
             elif w <= 2_500 and w >= 0:
-                rate = ((w / 100) * 19.696) + (d * .2550)
-
-        if w <= 10_000 and s == 'ON' and c == 'OTTAWA':
-            if w <= 10_000 and w > 7_500:
-                rate = ((w / 100) * 15.47) + (d * .2550)
-            elif w <= 7_500 and w > 5_000:
-                rate = ((w / 100) * 15.47) + (d * .2550)
-            elif w <= 5_000 and w > 2_500:
-                rate = ((w / 100) * 18.44) + (d * .2550)
-            elif w <= 2_500 and w >= 0:
-                rate = ((w / 100) * 20.84) + (d * .2550)
-
-        if w <= 10_000 and s == 'ON' and c == 'WHITBY' or 'BELLEVILLE':
-            if w <= 10_000 and w > 7_500:
-                rate = ((w / 100) * 17.9676) + (d * .2550)
-            elif w <= 7_500 and w > 5_000:
-                rate = ((w / 100) * 17.9676) + (d * .2550)
-            elif w <= 5_000 and w > 2_500:
-                rate = ((w / 100) * 17.9676) + (d * .2550)
-            elif w <= 2_500 and w >= 2_000:
-                rate = ((w / 100) * 23.008) + (d * .2550)
-            elif w <= 2_000 and w >= 500:
-                rate = ((w / 100) * 28.6798) + (d * .2550)
-            elif w <= 500 and w >= 0:
-                rate = ((w / 100) * 35.9248) + (d * .2550)
-
-        if w <= 10_000 and s == 'ON' and c == 'CAMBRIDGE' or 'KITCHENER':
-            if w <= 10_000 and w > 5_000:
-                rate = ((w / 100) * 16.66) + (d * .2550)
-            elif w <= 5_000 and w > 2_000:
-                rate = ((w / 100) * 18.44) + (d * .2550)
-            elif w <= 2_000 and w >= 0:
-                rate = ((w / 100) * 20.84) + (d * .2550)
-
-        if w <= 10_000 and s == 'QC' and c == 'NEWRICHMOND':
-            if w <= 10_000 and w > 5_000:
-                rate = ((w / 100) * 8.45) + (d * .2550)
-            elif w <= 5_000 and w > 2_000:
-                rate = ((w / 100) * 9.68) + (d * .2550)
-            elif w <= 2_500 and w >= 1_000:
-                rate = ((w / 100) * 10.27) + (d * .2550)
-            elif w <= 1_000 and w >= 500:
-                rate = ((w / 100) * 10.83) + (d * .2550)
-            elif w <= 500 and w >= 0:
-                rate = ((w / 100) * 14.05) + (d * .2550)
-
-        if w <= 10_000 and s == 'QC' and c == 'QUÉBEC' or 'SAINT-NICOLAS':
-            if w <= 10_000 and w > 7_500:
-                rate = ((w / 100) * 15.297) + (d * .2550)
-            elif w <= 7_500 and w > 5_000:
-                rate = ((w / 100) * 14.7798) + (d * .2550)
-            elif w <= 5_000 and w > 2_500:
-                rate = ((w / 100) * 16.0114) + (d * .2550)
-            elif w <= 2_500 and w >= 0:
-                rate = ((w / 100) * 18.4644) + (d * .2550)
+                rate = ((w / 100) * 22) + (d * .28)
 
         if w <= 10_000 and s == 'QC' and c == 'MONTRÉAL' or 'BOUCHERVILLE' or 'ANJOU' or 'DORVAL' or 'LACHINE' or 'SAINT-LAURENT' or 'SAINT-LÉONARD' or 'VARENNES' or 'CHAMBLY' or 'DRUMMONDVILLE' or 'MIRABEL' or 'NICOLET' or 'SAINTE-PERPETUE':
             if w <= 10_000 and w > 7_500:
-                rate = ((w / 100) * 15.297) + (d * .2550)
+                rate = ((w / 100) * 12) + (d * .28)
             elif w <= 7_500 and w > 5_000:
-                rate = ((w / 100) * 14.7798) + (d * .2550)
+                rate = ((w / 100) * 15) + (d * .28)
             elif w <= 5_000 and w > 2_500:
-                rate = ((w / 100) * 16.0114) + (d * .2550)
+                rate = ((w / 100) * 18) + (d * .28)
             elif w <= 2_500 and w >= 0:
-                rate = ((w / 100) * 18.4644) + (d * .2550)
+                rate = ((w / 100) * 20) + (d * .28)
 
         if w > 10_000 and s == 'ON':
-            rate = 2_050 + (d * 0.65) + (dc * self.drop_charge)
+            rate = 1_800 + (d * 0.55) + (dc * self.drop_charge)
         else:
             if w > 10_000 and s == 'QC':
-                rate = 1665.63 + (d * 0.65) + (dc * self.drop_charge)
+                rate = 1_500 + (d * 0.55) + (dc * self.drop_charge)
 
         return rate
-
-    def mode(self, w, d, s):
-        """
-        Returns the TL or LTL mode for Optimized loads
-
-        w = Weight
-        d = Distance
-        s = State
-        c = City
-        """
-        if w <= 10_000:
-            mode = 'LTL'
-        else:
-            if w > 10_000:
-                mode = 'TL'
-        return mode
 
     # =============================================================================
     # Routing Guide
