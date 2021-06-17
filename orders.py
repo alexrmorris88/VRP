@@ -129,7 +129,8 @@ class OrderOptimization:
 
         self.df = self.df[self.df['Pick-up Location City'] == 'ST. GEORGE']
 
-        # self.df = self.df[self.df['Delivery Location City'] != 'QUÉBEC']
+        self.df = self.df[self.df['Delivery Location City'] != 'QUÉBEC']
+        self.df = self.df[self.df['Delivery Location City'] != 'OTTAWA']
 
         self.df = self.df[(self.df['Delivery Location State/Province'] == 'ON') | (
                 self.df['Delivery Location State/Province'] == 'QC')]
