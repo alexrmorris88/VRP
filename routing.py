@@ -844,6 +844,9 @@ class RoutingOptimization:
     # Time Matrix
     # =============================================================================
     def time_matrix(self):
+        """
+        Create's a time matrix for the solver
+        """
         drop_dist = self.drop_dist()
 
         create_distance_matrix_pick = self.df_opt['pick distance']
@@ -906,7 +909,7 @@ class RoutingOptimization:
                 rate = 1_500 + (d * 0.55) + (dc * self.drop_charge)
 
         return rate
-    
+
     def mode(self, w, d, s):
         """
         Returns the TL or LTL mode for Optimized loads
